@@ -1,7 +1,8 @@
 import torch
 from torch.nn import Sequential, Linear, ReLU
 from torch_scatter import scatter_mean, scatter_add
-from gat_gpt2.scripts.graph_representation.modified_graph_layernorm import LayerNorm as myLayerNorm
+#from gat_gpt2.scripts.graph_representation.modified_graph_layernorm import LayerNorm as myLayerNorm
+import gat_gpt2.scripts.graph_representation.modified_graph_layernorm as m_layernorm
 import torch_geometric
 
 """
@@ -105,7 +106,7 @@ class sg_encoder(torch.nn.Module):
             num_node_features=self.sg_emb_dim,
             num_edge_features=self.sg_emb_dim)
 
-        self.graph_layer_norm = myLayerNorm(self.sg_emb_dim)
+        self.graph_layer_norm = m_layernorm.LayerNorm(self.sg_emb_dim)
 
     def forward(self,gt_scene_graphs,):
 

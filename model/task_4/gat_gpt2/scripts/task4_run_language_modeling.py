@@ -41,13 +41,17 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader, Dataset, RandomSampler, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
-from gat_gpt2.scripts.graph2dial import Graph2Dial
-from gat_gpt2.scripts.graph_representation.sg_data_entry import sg_feature_lookup
+#from gat_gpt2.scripts.graph2dial import Graph2Dial
+#from gat_gpt2.scripts.graph_representation.sg_data_entry import sg_feature_lookup
 import torch_geometric.data
 import torch_geometric.transforms
 import torch_geometric.utils
 import torch.nn.functional as F
-from gat_gpt2.scripts.graph_representation import Constants
+#from gat_gpt2.scripts.graph_representation import Constants
+#import gat_gpt2.scripts.graph_representation.Constants as Constants
+import gat_gpt2.scripts.graph_representation.sg_data_entry as sg_data_entry
+import gat_gpt2.scripts.graph_representation.Constants as Constants
+import gat_gpt2.scripts.graph2dial as g2d
 from transformers import (
     MODEL_WITH_LM_HEAD_MAPPING,
     WEIGHTS_NAME,
@@ -236,7 +240,7 @@ def _rotate_checkpoints(args, checkpoint_prefix="checkpoint", use_mtime=False) -
 
 def label_tokens (sg_input, conv_labels):
     dense_x = torch_geometric.utils.to_dense_batch(sg_input.x, batch=sg_input.batch)[0]
-    conv_labels_new = F.pad(conv_labels, pad=(dense_x.shape[1], 0), value=-100)
+    conv_labels_new = F.pad(conv_labels, pad=(dense_x.shape[1], 0), value=0)
     return conv_labels_new
 
 def mask_tokens(inputs: torch.Tensor, tokenizer: PreTrainedTokenizer, args) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -291,10 +295,10 @@ def train(args, train_dataset, model: PreTrainedModel, tokenizer: PreTrainedToke
 
     def collate(data):
         examples, sg_datum, belief_tokens = tuple(zip(*data))
-        sg_datum_processed = torch_geometric.data.Batch.from_data_list(sg_datum)
+        sg_datum = torch_geometric.data.Batch.from_data_list(sg_datum)
         if tokenizer._pad_token is None:
-            return pad_sequence(examples, batch_first=True), sg_datum_processed,  pad_sequence(belief_tokens, batch_first=True)
-        return pad_sequence(examples, batch_first=True, padding_value=tokenizer.pad_token_id), sg_datum_processed, pad_sequence(belief_tokens, batch_first=True, padding_value=tokenizer.pad_token_id)
+            return pad_sequence(examples, batch_first=True), sg_datum,  pad_sequence(belief_tokens, batch_first=True)
+        return pad_sequence(examples, batch_first=True, padding_value=tokenizer.pad_token_id), sg_datum, pad_sequence(belief_tokens, batch_first=True, padding_value=tokenizer.pad_token_id)
 
     train_sampler = (
         RandomSampler(train_dataset)
@@ -462,11 +466,15 @@ def train(args, train_dataset, model: PreTrainedModel, tokenizer: PreTrainedToke
             # )
 
             conv_inputs, sg_inputs, belief_inputs = batch
+            #print((conv_inputs.shape, conv_inputs.device))
+            #print((sg_inputs.x.shape, sg_inputs.ptr))
             conv_labels = label_tokens(sg_input=sg_inputs, conv_labels=conv_inputs.clone())
             # conv_labels, sg_labels, belief_labels = labels
             # del sg_labels, belief_labels
             conv_inputs = conv_inputs.to(args.device)
             sg_inputs = sg_inputs.to(args.device)
+            #print(("Conv_inputs",conv_inputs.shape, conv_inputs.device))
+            #print(("Sg_inputs",sg_inputs.x.shape, sg_inputs.ptr))
             belief_inputs = belief_inputs.to(args.device)
             conv_labels = conv_labels.to(args.device)
             # dense_x = dense_x.to(args.device)
@@ -604,7 +612,7 @@ def evaluate(
 
     # multi-gpu evaluate
     if args.n_gpu > 1:
-        model = torch.nn.DataParallel(model)
+        model = torch_geometric.nn.DataParallel(model, follow_batch=True)
 
     # Eval!
     logger.info("***** Running evaluation {} *****".format(prefix))
@@ -951,7 +959,7 @@ def main():
             "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
         )
         # torch.cuda.set_device(0)
-        args.n_gpu = 0 if args.no_cuda else torch.cuda.device_count()
+        args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
         device = torch.device("cuda", args.local_rank)
@@ -1009,7 +1017,7 @@ def main():
             "and load it from here, using --tokenizer_name"
         )
 
-    args.sg_feature = sg_feature_lookup(args.graph_json_file,tokenizer)
+    args.sg_feature = sg_data_entry.sg_feature_lookup(args.graph_json_file,tokenizer)
 
     if args.add_special_tokens:
         print(args.add_special_tokens)
@@ -1048,7 +1056,7 @@ def main():
         #     config=config,
         #     cache_dir=args.cache_dir,
         # )
-          model = Graph2Dial(config=config, pretrained_model_path=args.model_name_or_path, cache_dir=args.cache_dir , tokenizer=tokenizer, add_special_tokens=args.add_special_tokens, with_ins=args.with_ins, gat_conv_layers=args.gat_conv_layers)
+          model = g2d.Graph2Dial(config=config, pretrained_model_path=args.model_name_or_path, cache_dir=args.cache_dir , tokenizer=tokenizer, add_special_tokens=args.add_special_tokens, with_ins=args.with_ins, gat_conv_layers=args.gat_conv_layers)
     else:
         logger.info("Training new model from scratch")
         model = AutoModelWithLMHead.from_config(config)

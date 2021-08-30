@@ -2,7 +2,7 @@ import json
 import pathlib
 
 
-ROOT_DIR = pathlib.Path('/home/bhash/SIMMC_2/simmc2/model/task_4/gat_gpt2/data/graph_data')
+ROOT_DIR = pathlib.Path('/home/hsb2000/workspace/simmc2/model/task_4/gat_gpt2/data/graph_data')
 
 with open(ROOT_DIR /  'objects.json') as f:
     OBJECTS_INV = json.load(f)

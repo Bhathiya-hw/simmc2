@@ -9,8 +9,12 @@ else
 fi
 
 # Train (multi-modal)
-python3 -m gat_gpt2.scripts.task4_run_language_modeling \
-  --output_dir="${PATH_DIR}"/gat_gpt2/save/baseline_gat_detached  \
+python3 -m torch.distributed.run	\
+    --standalone	\
+    --nnodes=1	\
+  --nproc_per_node=4	\
+  "${PATH_DIR}"/gat_gpt2/scripts/task4_run_language_modeling.py \
+  --output_dir="${PATH_DIR}"/gat_gpt2/save/model_conv5_woins  \
   --model_type=gpt2 \
   --model_name_or_path=gpt2 \
   --line_by_line \
@@ -22,10 +26,10 @@ python3 -m gat_gpt2.scripts.task4_run_language_modeling \
   --graph_json_file="${PATH_DIR}"/gat_gpt2/data/graph_data/scene_graph.json \
   --do_eval \
   --eval_data_file="${PATH_DIR}"/gat_gpt2/data/t4_simmc2_dials_dstc10_devtest_target.txt  \
-  --num_train_epochs=5  \
+  --num_train_epochs=1  \
   --overwrite_output_dir  \
-  --per_gpu_train_batch_size=2  \
+  --per_gpu_train_batch_size=1  \
   --per_gpu_eval_batch_size=1 \
-  --save_steps=5000 \
+  --save_steps=1000 \
   --gat_conv_layers=2\
-
+  --local_rank=1

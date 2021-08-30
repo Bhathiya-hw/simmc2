@@ -2,11 +2,14 @@ import torch
 
 from torch.nn import Sequential, Linear, ReLU, Embedding, LayerNorm, Dropout, ModuleList
 from torch_scatter import scatter_mean, scatter_add
-from gat_gpt2.scripts.graph_representation.modified_graph_layernorm import LayerNorm as modifiedLayerNorm
+#from gat_gpt2.scripts.graph_representation.modified_graph_layernorm import LayerNorm as modifiedLayerNorm
 import logging
 import torch_geometric
-from gat_gpt2.scripts.graph_representation.sg_encoder import sg_encoder
-from gat_gpt2.scripts.graph_representation.gat_conv import gat, gat_seq
+#from gat_gpt2.scripts.graph_representation.sg_encoder import sg_encoder
+#from gat_gpt2.scripts.graph_representation.gat_conv import gat, gat_seq
+import gat_gpt2.scripts.graph_representation.sg_encoder as sg_encoder
+import gat_gpt2.scripts.graph_representation.gat_conv as gat_conv
+import torch.nn.functional as F
 
 from transformers import (
     MODEL_WITH_LM_HEAD_MAPPING,
@@ -123,9 +126,9 @@ class Graph2Dial(PreTrainedModel):
 
         self.with_ins = with_ins
         self.ins_dim = self.transformer.transformer.wte.embedding_dim
-        self.scene_graph_encoder = sg_encoder(len(tokenizer), self.ins_dim, tokenizer.pad_token_id)
+        self.scene_graph_encoder = sg_encoder.sg_encoder(len(tokenizer), self.ins_dim, tokenizer.pad_token_id)
 
-        self.gat_seq = gat_seq(in_channels=self.scene_graph_encoder.sg_emb_dim,
+        self.gat_seq = gat_conv.gat_seq(in_channels=self.scene_graph_encoder.sg_emb_dim,
                            out_channels=self.scene_graph_encoder.sg_emb_dim,
                            edge_attr_dim=self.scene_graph_encoder.sg_emb_dim,
                            with_ins= self.with_ins,
@@ -142,21 +145,26 @@ class Graph2Dial(PreTrainedModel):
                             position_ids=None, head_mask=None, inputs_embeds=None, encoder_hidden_states=None,
                             encoder_attention_mask=None, use_cache=None):
         #GAT
+        #sg_input = torch_geometric.data.Batch.from_data_list(sg_input).to(input_ids.device)
         x_encoded, edge_attr_encoded,_ = self.scene_graph_encoder(sg_input)
         if self.with_ins:
             mem = self.transformer.transformer.wte(belief_input.T)
         else:
             mem = None
         x_executed = self.gat_seq(x=x_encoded, edge_index=sg_input.edge_index, edge_attr=edge_attr_encoded, instr_vectors=mem, batch=sg_input.batch)
-        # print(sg_input.batch.shape)
+        #print(("sg_input batch", sg_input.batch.shape, sg_input.batch.device, sg_input.ptr))
+        #print(("inputs_ids", input_ids.shape, input_ids.device))
         dense_x_executed = torch_geometric.utils.to_dense_batch(x_executed,batch=sg_input.batch.clone())[0]
+        #conv_labels_new = F.pad(labels, pad=(dense_x_executed.shape[1], 0), value=-100)
 
         #Concat GAT+GPT2 Input
         conv_input_embed = self.transformer.transformer.wte(input_ids)
         inputs_embeds = torch.cat((dense_x_executed, conv_input_embed ),dim =1)
 
         #GPT2
-        dial_out = self.transformer(inputs_embeds=inputs_embeds, labels=labels,return_dict=return_dict,output_attentions=output_attentions,
+        #dial_out = self.transformer(inputs_embeds=inputs_embeds, labels=labels,return_dict=return_dict,output_attentions=output_attentions,
+        #                output_hidden_states=output_hidden_states)
+        dial_out = self.transformer(input_ids=input_ids, labels=input_ids,return_dict=return_dict,output_attentions=output_attentions,
                         output_hidden_states=output_hidden_states)
         return dial_out
 

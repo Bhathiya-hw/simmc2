@@ -25,7 +25,7 @@ import logging
 import os
 import numpy as np
 import torch
-from gat_gpt2.scripts.graph2dial import Graph2Dial
+#from gat_gpt2.scripts.graph2dial import Graph2Dial
 from transformers import (
     CTRLLMHeadModel,
     CTRLTokenizer,
@@ -41,10 +41,12 @@ from transformers import (
     XLNetTokenizer,
     AutoConfig
 )
-from gat_gpt2.scripts.graph_representation.sg_data_entry import sg_feature_lookup
+#from gat_gpt2.scripts.graph_representation.sg_data_entry import sg_feature_lookup
 import torch_geometric.data
 import torch_geometric.transforms
 import torch_geometric.utils
+import gat_gpt2.scripts.graph_representation.sg_data_entry as sg_data_entry
+import gat_gpt2.scripts.graph2dial as g2d
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
@@ -56,7 +58,7 @@ logger = logging.getLogger(__name__)
 MAX_LENGTH = int(10000)  # Hardcoded max length to avoid infinite loop
 
 MODEL_CLASSES = {
-    "graph2dial": (Graph2Dial, GPT2Tokenizer),
+    "graph2dial": (g2d.Graph2Dial, GPT2Tokenizer),
     "gpt2": (GPT2LMHeadModel, GPT2Tokenizer),
     "ctrl": (CTRLLMHeadModel, CTRLTokenizer),
     "openai-gpt": (OpenAIGPTLMHeadModel, OpenAIGPTTokenizer),
@@ -331,7 +333,7 @@ command line""",
     model = model_class.from_pretrained( pretrained_model_name_or_path= args.model_name_or_path, config=config, tokenizer = tokenizer, with_ins=args.with_ins, gat_conv_layers=args.gat_conv_layers)
     model.to(args.device)
 
-    args.sg_feature = sg_feature_lookup(args.graph_json_file,tokenizer)
+    args.sg_feature = sg_data_entry.sg_feature_lookup(args.graph_json_file,tokenizer)
     args.length = adjust_length_to_model(
         args.length, max_sequence_length=model.config.max_position_embeddings
     )
