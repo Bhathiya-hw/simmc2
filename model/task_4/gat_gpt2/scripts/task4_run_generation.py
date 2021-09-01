@@ -39,7 +39,15 @@ from transformers import (
     XLMWithLMHeadModel,
     XLNetLMHeadModel,
     XLNetTokenizer,
-    AutoConfig
+    AutoConfig,
+
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    LogitsProcessorList,
+    MinLengthLogitsProcessor,
+    TopKLogitsWarper,
+    TemperatureLogitsWarper,
+    RepetitionPenaltyLogitsProcessor
 )
 #from gat_gpt2.scripts.graph_representation.sg_data_entry import sg_feature_lookup
 import torch_geometric.data
@@ -387,20 +395,39 @@ command line""",
             encoded_belief_input = encoded_belief_input.to(args.device)
 
             # model.config.is_encoder_decoder = True
-            output_sequences = model.generate(
-                input_ids = encoded_prompt,
-                max_length=args.length + len(encoded_prompt[0]) + encoded_sg_input.x.shape[0],
-                temperature=args.temperature,
-                top_k=args.k,
-                top_p=args.p,
-                repetition_penalty=args.repetition_penalty,
-                do_sample=True,
-                num_return_sequences=args.num_return_sequences,
-                # conv_input= encoded_prompt,
-                sg_input= encoded_sg_input,
-                belief_input= encoded_belief_input,
-                kwargs = {"sg_input": encoded_sg_input, "belief_input":encoded_belief_input}
-            )
+            # output_sequences = model.generate(
+            #     input_ids = encoded_prompt,
+            #     max_length=args.length + len(encoded_prompt[0]) + encoded_sg_input.x.shape[0],
+            #     temperature=args.temperature,
+            #     top_k=args.k,
+            #     top_p=args.p,
+            #     repetition_penalty=args.repetition_penalty,
+            #     do_sample=True,
+            #     num_return_sequences=args.num_return_sequences,
+            #     # conv_input= encoded_prompt,
+            #     sg_input= encoded_sg_input,
+            #     belief_input= encoded_belief_input,
+            #     kwargs = {"sg_input": encoded_sg_input, "belief_input":encoded_belief_input}
+            # )
+            # instantiate logits processors
+            logits_processor = LogitsProcessorList([RepetitionPenaltyLogitsProcessor(0.1)])
+            # instantiate logits processors
+            logits_warper = LogitsProcessorList([TemperatureLogitsWarper(0.7),])
+
+            output_sequences = model.sample(
+                    input_ids = encoded_prompt,
+                    logits_processor = logits_processor,
+                    stopping_criteria= None,
+                    logits_warper = logits_warper,
+                    max_length = 100,
+                    # pad_token_id = 50256,
+                    # eos_token_id = 50256,
+                    output_attentions = False,
+                    output_hidden_states = False,
+                    output_scores = False,
+                    return_dict_in_generate = False,
+                    sg_input = encoded_sg_input,
+                    belief_input= encoded_belief_input)
 
             # Remove the batch dimension when returning multiple sequences
             if len(output_sequences.shape) > 2:

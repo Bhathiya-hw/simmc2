@@ -47,8 +47,11 @@ import torch_geometric.data
 import torch_geometric.transforms
 import torch_geometric.utils
 import torch.nn.functional as F
+import sys
 #from gat_gpt2.scripts.graph_representation import Constants
 #import gat_gpt2.scripts.graph_representation.Constants as Constants
+
+sys.path.append("./../../")
 import gat_gpt2.scripts.graph_representation.sg_data_entry as sg_data_entry
 import gat_gpt2.scripts.graph_representation.Constants as Constants
 import gat_gpt2.scripts.graph2dial as g2d
@@ -484,6 +487,11 @@ def train(args, train_dataset, model: PreTrainedModel, tokenizer: PreTrainedToke
                 if args.mlm
                 else model(conv_inputs, sg_inputs, belief_inputs, conv_labels)
             )
+
+            for i,output in enumerate(outputs[1]):
+                print( "Input : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(conv_inputs[i]))).replace('Ġ', " "))
+                print("Output : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(torch.argmax(output,dim=1))).replace('Ġ', " ")))
+
             loss = outputs[
                 0
             ]  # model outputs are always tuple in transformers (see doc)
