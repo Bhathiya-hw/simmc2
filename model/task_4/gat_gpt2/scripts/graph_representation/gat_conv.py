@@ -273,7 +273,7 @@ class gat_seq(torch.nn.Module):
 
                 # do BN, ReLU, Droupout in-between all conv layers
                 if i != num_conv_layers-1:
-                    h = self.bns[i](h)
+                    # h = self.bns[i](h)
                     h = F.relu(h)
                     h = F.dropout(h, p=self.dropout, training=self.training)
         else:
@@ -283,7 +283,7 @@ class gat_seq(torch.nn.Module):
 
                 # do BN, ReLU, Droupout in-between all conv layers
                 if i != num_conv_layers - 1:
-                    h = self.bns[i](h)
+                    #h = self.bns[i](h)
                     h = F.relu(h)
                     h = F.dropout(h, p=self.dropout, training=self.training)
 

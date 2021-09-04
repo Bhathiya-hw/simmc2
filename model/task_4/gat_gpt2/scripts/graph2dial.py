@@ -25,6 +25,7 @@ from transformers import (
     get_linear_schedule_with_warmup, add_start_docstrings,
     GPT2LMHeadModel,
     GPT2Model,
+    GPT2PreTrainedModel
 )
 
 from transformers.modeling_utils import PreTrainedModel, Conv1D, prune_conv1d_layer, SequenceSummary
@@ -113,7 +114,7 @@ class MyConditionalGlobalAttention(torch.nn.Module):
                                               self.gate_nn, self.node_nn, self.ques_nn)
 
 
-class Graph2Dial(GPT2LMHeadModel):
+class Graph2Dial(GPT2PreTrainedModel):
     def __init__(self, config,tokenizer, pretrained_model_path=None, cache_dir= None ,add_special_tokens =True, with_ins =False, gat_conv_layers=5 ):
         super(Graph2Dial, self).__init__(config)
         if pretrained_model_path:
@@ -136,12 +137,12 @@ class Graph2Dial(GPT2LMHeadModel):
                            out_channels=self.scene_graph_encoder.sg_emb_dim,
                            edge_attr_dim=self.scene_graph_encoder.sg_emb_dim,
                            with_ins= self.with_ins,
-                           ins_dim=self.ins_dim, gat_conv_layers=gat_conv_layers,
+                           ins_dim=512, gat_conv_layers=gat_conv_layers,
                            dropout=0.1, gat_heads=4, gat_negative_slope=0.2, gat_bias=True)  # the drop-out is for both dropout in
 
-        self.graph_global_attention_pooling = MyConditionalGlobalAttention(
-            num_node_features=self.scene_graph_encoder.sg_emb_dim,
-            num_out_features=512)
+        # self.graph_global_attention_pooling = MyConditionalGlobalAttention(
+        #     num_node_features=self.scene_graph_encoder.sg_emb_dim,
+        #     num_out_features=512)
         # self.tie_lm_weights()
 
     def forward(self,input_ids, sg_input=None, belief_input=None, labels=None,return_dict=False,output_attentions=None,
@@ -158,6 +159,7 @@ class Graph2Dial(GPT2LMHeadModel):
         x_executed = self.gat_seq(x=x_encoded, edge_index=sg_input.edge_index, edge_attr=edge_attr_encoded, instr_vectors=mem, batch=sg_input.batch)
         #print(("sg_input batch", sg_input.batch.shape, sg_input.batch.device, sg_input.ptr))
         #print(("inputs_ids", input_ids.shape, input_ids.device))
+        # print(x_executed.shape, sg_input.batch.shape)
         dense_x_executed = torch_geometric.utils.to_dense_batch(x_executed,batch=sg_input.batch.clone())[0]
         #conv_labels_new = F.pad(labels, pad=(dense_x_executed.shape[1], 0), value=-100)
 
@@ -166,12 +168,12 @@ class Graph2Dial(GPT2LMHeadModel):
         inputs_embeds = torch.cat((dense_x_executed, conv_input_embed ),dim =1)
 
         #GPT2
-        #dial_out = self.transformer(inputs_embeds=inputs_embeds, labels=labels,return_dict=return_dict,output_attentions=output_attentions,
-        #                output_hidden_states=output_hidden_states)
-        dial_out = self.transformer(input_ids=input_ids, labels=input_ids,return_dict=True,output_attentions=output_attentions,
-                        output_hidden_states=output_hidden_states)
-        print(torch.argmax(torch.nn.functional.softmax(self.transformer(input_ids=input_ids[:, :50], return_dict=True, output_attentions=output_attentions,
-                                                                   output_hidden_states=output_hidden_states)['logits'][:, -1, :]), dim=1))
+        dial_out = self.transformer(inputs_embeds=inputs_embeds, labels=labels,return_dict=return_dict,output_attentions=output_attentions,
+                       output_hidden_states=output_hidden_states)
+        # dial_out = self.transformer(input_ids=input_ids, labels=input_ids,return_dict=True,output_attentions=output_attentions,
+        #                 output_hidden_states=output_hidden_states)
+        # print(torch.argmax(torch.nn.functional.softmax(self.transformer(input_ids=input_ids[:, :50], return_dict=True, output_attentions=output_attentions,
+        #                                                            output_hidden_states=output_hidden_states)['logits'][:, -1, :]), dim=1))
         return dial_out
 
     def sample(
