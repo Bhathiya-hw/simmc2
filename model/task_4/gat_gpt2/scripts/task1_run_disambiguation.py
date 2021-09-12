@@ -113,7 +113,7 @@ class TextDataset(Dataset):
 
 
 class LineByLineTextDataset(Dataset):
-    def __init__(self, tokenizer: PreTrainedTokenizer, args, file_path: str, predict_file_path:str, scene_file_path :str, belief_file_path:str, block_size=512):
+    def __init__(self, tokenizer: PreTrainedTokenizer, args, file_path: str, scene_file_path :str, belief_file_path:str, block_size=512):
         print(file_path)
         assert os.path.isfile(file_path)
         # Here, we do not cache the features, operating under the assumption
@@ -125,10 +125,8 @@ class LineByLineTextDataset(Dataset):
             beliefs = [belief for belief in f.read().splitlines() if (len(belief) > 0 and not belief.isspace()) ]
         with open(file_path, encoding="utf-8") as f:
             lines = [line for line in f.read().splitlines() if (len(line) > 0 and not line.isspace())]
-        with open(predict_file_path, encoding="utf-8") as f:
-            predict_lines = [predict_line for predict_line in f.read().splitlines() if (len(predict_line) > 0 and not predict_line.isspace())]
 
-        # scene_graph_load = json.load(open(self.graph_json_path))
+        # scene_graph_load = json.load(open(graph_json_path))
         with open(scene_file_path, encoding='utf-8') as f:
             scene_lines = [scene_line for scene_line in f.read().splitlines() if (len(scene_line) > 0 and not scene_line.isspace())]
 
@@ -152,7 +150,6 @@ class LineByLineTextDataset(Dataset):
                 sg_data.append(scene_data_dict[key].clone())
 
         self.examples = tokenizer.batch_encode_plus(lines, add_special_tokens=True, max_length=block_size)["input_ids"]
-        self.predict_lines = tokenizer.batch_encode_plus(predict_lines, add_special_tokens=True, max_length=block_size)["input_ids"]
         self.scenes = sg_data
         self.belief_tokens = belief_encoded_final
     def __len__(self):
@@ -160,17 +157,16 @@ class LineByLineTextDataset(Dataset):
 
     def __getitem__(self, i):
         if self.belief_tokens:
-            return torch.tensor(self.examples[i], dtype=torch.long) ,torch.tensor(self.predict_lines[i], dtype=torch.long), self.scenes[i], torch.tensor(self.belief_tokens[i], dtype=torch.long)
+            return torch.tensor(self.examples[i], dtype=torch.long) , self.scenes[i], torch.tensor(self.belief_tokens[i], dtype=torch.long)
         else:
-            return torch.tensor(self.examples[i], dtype=torch.long),torch.tensor(self.predict_lines[i], dtype=torch.long), self.scenes[i], torch.tensor([[0]])
+            return torch.tensor(self.examples[i], dtype=torch.long), self.scenes[i], torch.tensor([[0]])
 def load_and_cache_examples(args, tokenizer, evaluate=False):
     file_path = args.eval_data_file if evaluate else args.train_data_file
     scene_file_path = args.scene_eval_data_file if evaluate else args.scene_train_data_file
     belief_file_path = args.belief_eval_data_file if evaluate else args.belief_train_data_file
-    predict_file_path = args.predict_eval_data_file if evaluate else args.predict_train_data_file
     if args.line_by_line:
         dataset = LineByLineTextDataset(
-            tokenizer, args, file_path=file_path, predict_file_path= predict_file_path, scene_file_path=scene_file_path, belief_file_path= belief_file_path, block_size=args.block_size
+            tokenizer, args, file_path=file_path, scene_file_path=scene_file_path, belief_file_path= belief_file_path, block_size=args.block_size
         )
     else:
         dataset = TextDataset(
@@ -301,11 +297,11 @@ def train(args, train_dataset, model: PreTrainedModel, tokenizer: PreTrainedToke
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
 
     def collate(data):
-        examples, predict_lines,sg_datum, belief_tokens = tuple(zip(*data))
+        examples, sg_datum, belief_tokens = tuple(zip(*data))
         sg_datum = torch_geometric.data.Batch.from_data_list(sg_datum)
         if tokenizer._pad_token is None:
-            return pad_sequence(examples, batch_first=True), pad_sequence(predict_lines, batch_first=True), sg_datum,  pad_sequence(belief_tokens, batch_first=True)
-        return pad_sequence(examples, batch_first=True, padding_value=tokenizer.pad_token_id),pad_sequence(predict_lines, batch_first=True), sg_datum, pad_sequence(belief_tokens, batch_first=True, padding_value=tokenizer.pad_token_id)
+            return pad_sequence(examples, batch_first=True), sg_datum,  pad_sequence(belief_tokens, batch_first=True)
+        return pad_sequence(examples, batch_first=True, padding_value=tokenizer.pad_token_id), sg_datum, pad_sequence(belief_tokens, batch_first=True, padding_value=tokenizer.pad_token_id)
 
     train_sampler = (
         RandomSampler(train_dataset)
@@ -472,29 +468,24 @@ def train(args, train_dataset, model: PreTrainedModel, tokenizer: PreTrainedToke
             #     mask_tokens(batch, tokenizer, args) if args.mlm else (batch, batch)
             # )
 
-            conv_inputs,predict_inputs, sg_inputs, belief_inputs = batch
+            conv_inputs, sg_inputs, belief_inputs = batch
             #print((conv_inputs.shape, conv_inputs.device))
             #print((sg_inputs.x.shape, sg_inputs.ptr))
-            # conv_labels = label_tokens(sg_input=sg_inputs, conv_labels=conv_inputs.clone())
+            conv_labels = label_tokens(sg_input=sg_inputs, conv_labels=conv_inputs.clone())
             # conv_labels, sg_labels, belief_labels = labels
             # del sg_labels, belief_labels
-            conv_labels = torch.cat((torch.tensor([[-100]] * conv_inputs.shape[0]), conv_inputs.clone()), dim=1)
             conv_inputs = conv_inputs.to(args.device)
-            conv_labels = conv_labels.to(args.device)
             sg_inputs = sg_inputs.to(args.device)
-            predict_inputs = predict_inputs.to(args.device)
-
             #print(("Conv_inputs",conv_inputs.shape, conv_inputs.device))
             #print(("Sg_inputs",sg_inputs.x.shape, sg_inputs.ptr))
-            # belief_inputs = belief_inputs.to(args.device)
-            # conv_labels = conv_labels.to(args.device)
-
+            belief_inputs = belief_inputs.to(args.device)
+            conv_labels = conv_labels.to(args.device)
             # dense_x = dense_x.to(args.device)
             model.train()
             outputs = (
-                model(conv_inputs, predict_inputs, sg_inputs, None, masked_lm_labels=conv_labels)
+                model(conv_inputs, sg_inputs, belief_inputs, masked_lm_labels=conv_labels)
                 if args.mlm
-                else model(conv_inputs, predict_inputs, sg_inputs, None, conv_labels)
+                else model(conv_inputs, sg_inputs, belief_inputs, conv_labels)
             )
 
             for i,output in enumerate(outputs[1]):
@@ -682,15 +673,6 @@ def main():
         required=True,
         help="The input training data file (a text file).",
     )
-
-    parser.add_argument(
-        "--predict_train_data_file",
-        default=None,
-        type=str,
-        required=True,
-        help="The input training data file (a text file).",
-    )
-
     parser.add_argument(
         "--scene_train_data_file",
         default=None,

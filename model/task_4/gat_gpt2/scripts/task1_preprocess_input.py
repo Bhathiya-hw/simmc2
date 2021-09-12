@@ -11,7 +11,7 @@ root directory of this source tree.
     The reformatted data is used as input for the GPT-2 based
     DST model baseline.
 """
-import gat_gpt2.utils.baseline1_convert as baseline_1
+import gat_gpt2.utils.task1_convert as baseline_1
 import argparse
 
 if __name__ == "__main__":

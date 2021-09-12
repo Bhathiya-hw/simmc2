@@ -410,16 +410,17 @@ command line""",
             #     kwargs = {"sg_input": encoded_sg_input, "belief_input":encoded_belief_input}
             # )
             # instantiate logits processors
-            logits_processor = LogitsProcessorList([RepetitionPenaltyLogitsProcessor(0.1)])
+            # logits_processor = LogitsProcessorList([RepetitionPenaltyLogitsProcessor(0.1)])
             # instantiate logits processors
-            logits_warper = LogitsProcessorList([TemperatureLogitsWarper(0.7),])
-
+            # logits_warper = LogitsProcessorList([TemperatureLogitsWarper(0.7),TopKLogitsWarper(top_k=
+            logits_processor = LogitsProcessorList([])
+            logits_warper = LogitsProcessorList([TopKLogitsWarper(top_k=1)])
             output_sequences = model.sample(
                     input_ids = encoded_prompt,
                     logits_processor = logits_processor,
                     stopping_criteria= None,
                     logits_warper = logits_warper,
-                    max_length = encoded_prompt.shape[1]+ encoded_sg_input.x.shape[1] + 100,
+                    max_length = encoded_prompt.shape[1]+ encoded_sg_input.x.shape[1] + 3,
                     # pad_token_id = 50256,
                     # eos_token_id = 50256,
                     output_attentions = False,

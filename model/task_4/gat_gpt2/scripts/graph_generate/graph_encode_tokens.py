@@ -20,12 +20,23 @@ if __name__ == "__main__":
     output_path_predicates = args.output_path_predicates
     output_path_objects = args.output_path_objects
     output_path_object2attributes = args.output_path_object2attributes
+    # output_path_special = args.output_path_special
 
     scene_graph_load= json.load(open(input_graph_json))
+
+    SPECIAL_ATTRIBUTE_TOKENS = ['price = unknown', 'sleeveLength = unknown', 'color = unknown', 'type = unknown', 'size = unknown',
+                               'brand = unknown', 'customerReview = unknown', 'pattern = unknown', 'materials = unknown', 'DISAMBIGUATE = YES', 'DISAMBIGUATE = NO']
+
+    SPECIAL_EDGE_TOKENS = ['price', 'sleeveLength', 'color', 'type', 'material', 'brand', 'pattern', 'positioned', 'assetType', 'DISAMBIGUATE', 'TO_ROOT', 'FROM_ROOT']
+
+    # DISAMBIGUATE_NODE_TOKEN = ['DISAMBIGUATE = YES', 'DISAMBIGUATE = NO' ]
+    # MENTIONED_OBJECTS_TOKENS = ['MENTIONED = YES', 'MENTIONED = NO']
+
 
     attributes = set()
     predicates = set()
     objects = set()
+    # special_tokens = SPECIAL_EDGE_TOKENS + SPECIAL_ATTRIBUTE_TOKENS + DISAMBIGUATE_NODE_TOKEN
     object2attributes = {}
     for json_path, graph in scene_graph_load.items():
          for object_index, object_graph in graph.items():
@@ -34,7 +45,7 @@ if __name__ == "__main__":
 
              visual = object_graph['visual']
              non_visual  = object_graph['non-visual']
-             prefab_path = object_graph['prefab']
+             # prefab_path = object_graph['prefab']
              relations = object_graph['relation']
 
              object_attr = visual + non_visual
@@ -45,6 +56,12 @@ if __name__ == "__main__":
 
              for non_vis_rel in non_visual:
                 attributes.add(non_vis_rel)
+
+             for attribute_token in SPECIAL_ATTRIBUTE_TOKENS:
+                attributes.add(attribute_token)
+
+             for edge_token in SPECIAL_EDGE_TOKENS:
+                predicates.add(edge_token)
 
              for relation in relations:
                 rel_predicate = relation[0]
@@ -61,3 +78,6 @@ if __name__ == "__main__":
 
     with open(output_path_object2attributes, 'w+') as f:
         json.dump(object2attributes,f)
+
+    # with open(output_path_special, 'w+') as f:
+    #     json.dump(special_tokens,f)
