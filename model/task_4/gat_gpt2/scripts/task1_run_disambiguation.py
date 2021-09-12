@@ -33,6 +33,7 @@ import os
 import random
 import re
 import shutil
+from itertools import compress
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -54,7 +55,8 @@ import sys
 sys.path.append("./../../")
 import gat_gpt2.scripts.graph_representation.sg_data_entry as sg_data_entry
 import gat_gpt2.scripts.graph_representation.Constants as Constants
-import gat_gpt2.scripts.graph2dial as g2d
+# import gat_gpt2.scripts.graph2dial as g2d
+import gat_gpt2.scripts.graph_representation.gat_encoder_decoder as enc_dec
 from transformers import (
     MODEL_WITH_LM_HEAD_MAPPING,
     WEIGHTS_NAME,
@@ -113,13 +115,18 @@ class TextDataset(Dataset):
 
 
 class LineByLineTextDataset(Dataset):
-    def __init__(self, tokenizer: PreTrainedTokenizer, args, file_path: str, scene_file_path :str, belief_file_path:str, block_size=512):
+    def __init__(self, tokenizer: PreTrainedTokenizer, args, file_path: str, scene_file_path :str, belief_file_path:str, dismabiguation_file_path:str, block_size=512):
         print(file_path)
         assert os.path.isfile(file_path)
         # Here, we do not cache the features, operating under the assumption
         # that we will soon use fast multithreaded tokenizers from the
         # `tokenizers` repo everywhere =)
         logger.info("Creating features from dataset file at %s", file_path)
+
+        with open(dismabiguation_file_path, encoding="utf-8") as f:
+            labels = [label for label in f.read().splitlines() if (len(label) > 0 and not label.isspace()) ]
+
+        label_filter = [True if label != 'DISAMBIGUATE = UNDEFINED' else False for label in labels ]
 
         with open(belief_file_path, encoding="utf-8") as f:
             beliefs = [belief for belief in f.read().splitlines() if (len(belief) > 0 and not belief.isspace()) ]
@@ -130,10 +137,15 @@ class LineByLineTextDataset(Dataset):
         with open(scene_file_path, encoding='utf-8') as f:
             scene_lines = [scene_line for scene_line in f.read().splitlines() if (len(scene_line) > 0 and not scene_line.isspace())]
 
+        lines = list(compress(lines,label_filter))
+        labels = list(compress(labels,label_filter))
+        beliefs = list(compress(beliefs,label_filter))
+        scene_lines = list(compress(scene_lines,label_filter))
         # scene_graphs_keys = [scene_graph_load[scene_line + '_scene.json'] for scene_line in scene_lines ]
         scene_data_dict = {}
         sg_data = []
         belief_encoded_final = []
+        label_encoded = [[tokenizer.convert_tokens_to_ids(label)] for label in labels]
         if args.with_ins:
             belief_encoded = []
             for belief in beliefs:
@@ -152,21 +164,25 @@ class LineByLineTextDataset(Dataset):
         self.examples = tokenizer.batch_encode_plus(lines, add_special_tokens=True, max_length=block_size)["input_ids"]
         self.scenes = sg_data
         self.belief_tokens = belief_encoded_final
+        self.label_encoded = label_encoded
+
     def __len__(self):
         return len(self.examples)
 
     def __getitem__(self, i):
         if self.belief_tokens:
-            return torch.tensor(self.examples[i], dtype=torch.long) , self.scenes[i], torch.tensor(self.belief_tokens[i], dtype=torch.long)
+            return torch.tensor(self.examples[i], dtype=torch.long) , self.scenes[i], torch.tensor(self.belief_tokens[i], dtype=torch.long), torch.tensor([self.label_encoded[i]], dtype=torch.long)
         else:
-            return torch.tensor(self.examples[i], dtype=torch.long), self.scenes[i], torch.tensor([[0]])
+            return torch.tensor(self.examples[i], dtype=torch.long), self.scenes[i], torch.tensor([[0]]), torch.tensor(self.label_encoded[i], dtype=torch.long)
+
 def load_and_cache_examples(args, tokenizer, evaluate=False):
     file_path = args.eval_data_file if evaluate else args.train_data_file
     scene_file_path = args.scene_eval_data_file if evaluate else args.scene_train_data_file
     belief_file_path = args.belief_eval_data_file if evaluate else args.belief_train_data_file
+    disambiguation_file_path = args.disambiguation_eval_data_file if evaluate else args.disambiguation_train_data_file
     if args.line_by_line:
         dataset = LineByLineTextDataset(
-            tokenizer, args, file_path=file_path, scene_file_path=scene_file_path, belief_file_path= belief_file_path, block_size=args.block_size
+            tokenizer, args, file_path=file_path, scene_file_path=scene_file_path, belief_file_path= belief_file_path, dismabiguation_file_path= disambiguation_file_path, block_size=args.block_size
         )
     else:
         dataset = TextDataset(
@@ -297,11 +313,11 @@ def train(args, train_dataset, model: PreTrainedModel, tokenizer: PreTrainedToke
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
 
     def collate(data):
-        examples, sg_datum, belief_tokens = tuple(zip(*data))
+        examples, sg_datum, belief_tokens, disambiguation_labels = tuple(zip(*data))
         sg_datum = torch_geometric.data.Batch.from_data_list(sg_datum)
         if tokenizer._pad_token is None:
-            return pad_sequence(examples, batch_first=True), sg_datum,  pad_sequence(belief_tokens, batch_first=True)
-        return pad_sequence(examples, batch_first=True, padding_value=tokenizer.pad_token_id), sg_datum, pad_sequence(belief_tokens, batch_first=True, padding_value=tokenizer.pad_token_id)
+            return pad_sequence(examples, batch_first=False), sg_datum,  pad_sequence(belief_tokens, batch_first=False), pad_sequence(disambiguation_labels, batch_first=False)
+        return pad_sequence(examples, batch_first=False, padding_value=tokenizer.pad_token_id), sg_datum, pad_sequence(belief_tokens, batch_first=False, padding_value=tokenizer.pad_token_id), pad_sequence(disambiguation_labels, batch_first=False)
 
     train_sampler = (
         RandomSampler(train_dataset)
@@ -464,37 +480,21 @@ def train(args, train_dataset, model: PreTrainedModel, tokenizer: PreTrainedToke
                 steps_trained_in_current_epoch -= 1
                 continue
 
-            # inputs, labels = (
-            #     mask_tokens(batch, tokenizer, args) if args.mlm else (batch, batch)
-            # )
-
-            conv_inputs, sg_inputs, belief_inputs = batch
-            #print((conv_inputs.shape, conv_inputs.device))
-            #print((sg_inputs.x.shape, sg_inputs.ptr))
-            conv_labels = label_tokens(sg_input=sg_inputs, conv_labels=conv_inputs.clone())
-            # conv_labels, sg_labels, belief_labels = labels
-            # del sg_labels, belief_labels
+            conv_inputs, sg_inputs, belief_inputs, disambiguation_labels = batch
             conv_inputs = conv_inputs.to(args.device)
             sg_inputs = sg_inputs.to(args.device)
-            #print(("Conv_inputs",conv_inputs.shape, conv_inputs.device))
-            #print(("Sg_inputs",sg_inputs.x.shape, sg_inputs.ptr))
-            belief_inputs = belief_inputs.to(args.device)
-            conv_labels = conv_labels.to(args.device)
-            # dense_x = dense_x.to(args.device)
+            disambiguation_labels = disambiguation_labels.to(args.device)
             model.train()
             outputs = (
-                model(conv_inputs, sg_inputs, belief_inputs, masked_lm_labels=conv_labels)
-                if args.mlm
-                else model(conv_inputs, sg_inputs, belief_inputs, conv_labels)
+                model(questions= conv_inputs, gt_scene_graphs = sg_inputs, programs_input = None, full_answers = None,
+                      short_answers = disambiguation_labels)
             )
 
-            for i,output in enumerate(outputs[1]):
-                print( "Input : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(conv_inputs[i]))).replace('Ġ', " "))
-                print("Output : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(torch.argmax(output,dim=1))).replace('Ġ', " ")))
+            # for i,output in enumerate(outputs[1]):
+            #     print( "Input : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(conv_inputs[i]))).replace('Ġ', " "))
+            #     print("Output : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(torch.argmax(output,dim=1))).replace('Ġ', " ")))
 
-            loss = outputs[
-                0
-            ]  # model outputs are always tuple in transformers (see doc)
+            loss = outputs  # model outputs are always tuple in transformers (see doc)
 
             if args.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -682,6 +682,13 @@ def main():
     )
     parser.add_argument(
         "--belief_train_data_file",
+        default=None,
+        type=str,
+        required=True,
+        help="The input training belief data file (a text file).",
+    )
+    parser.add_argument(
+        "--disambiguation_train_data_file",
         default=None,
         type=str,
         required=True,
@@ -1026,7 +1033,7 @@ def main():
         )
 
     args.sg_feature = sg_data_entry.sg_feature_lookup(args.graph_json_file,tokenizer)
-
+    # args.add_special_tokens = True
     if args.add_special_tokens:
         print(args.add_special_tokens)
         if not os.path.exists(args.add_special_tokens):
@@ -1057,23 +1064,7 @@ def main():
     else:
         args.block_size = min(args.block_size, tokenizer.max_len)
 
-    if args.model_name_or_path:
-        # model = AutoModelWithLMHead.from_pretrained(
-        #     args.model_name_or_path,
-        #     from_tf=bool(".ckpt" in args.model_name_or_path),
-        #     config=config,
-        #     cache_dir=args.cache_dir,
-        # )
-          model = g2d.Graph2Dial(config=config, pretrained_model_path=args.model_name_or_path, cache_dir=args.cache_dir , tokenizer=tokenizer, add_special_tokens=args.add_special_tokens, with_ins=args.with_ins, gat_conv_layers=args.gat_conv_layers)
-    else:
-        logger.info("Training new model from scratch")
-        model = AutoModelWithLMHead.from_config(config)
-
-    # ensure model aligns with any addition of special tokens
-    # (unclear if this step is needed for a new model)
-    # if args.add_special_tokens:
-    #     model.resize_token_embeddings(len(tokenizer))
-
+    model = enc_dec.GATEncoderDecoder(tokenizer=tokenizer, gat_conv_layers=5, ins_dim=768)
     model.to(args.device)
 
     if args.local_rank == 0:
