@@ -114,9 +114,9 @@ class Graph2Dial(GPT2PreTrainedModel):
         # question_node_relevance = torch.mean(torch.nn.functional.softmax(torch.matmul(question_encoded.squeeze(1), x_executed.transpose(1, 0)), dim=1),dim=0)
         # print(','.join([self.tokenizer.decode(sg_input.x[k][0]) for k in question_node_relevance.topk(5)[1]]))
         # da_loss = self.direct_ans_criterion(question_node_relevance, target_classification)
-        direct_logits = self.direct_fc(x_executed)
-        print([(self.tokenizer.decode(sg_input.x[i][0]), torch.nn.functional.sigmoid(direct_logits[i])) for i in range(direct_logits.shape[0])])
-        da_loss = self.direct_ans_criterion(direct_logits.squeeze(1), target_classification)
+        # direct_logits = self.direct_fc(x_executed)
+        # print([(self.tokenizer.decode(sg_input.x[i][0]), torch.nn.functional.sigmoid(direct_logits[i])) for i in range(direct_logits.shape[0])])
+        # da_loss = self.direct_ans_criterion(direct_logits.squeeze(1), target_classification)
 
         conv_input_embed = self.transformer.transformer.wte(input_ids)
         inputs_embeds = torch.cat((x_executed.unsqueeze(1), conv_input_embed), dim=0)
@@ -129,9 +129,9 @@ class Graph2Dial(GPT2PreTrainedModel):
         # pred_loss = self.predicted_ans_criterion(prediction_relevance, target_classification)
         #
         #
-        print("da_loss:{}  dial_out: {}".format(da_loss, dial_out['loss']))
+        # print("da_loss:{}  dial_out: {}".format(da_loss, dial_out['loss']))
         # loss = da_loss + pred_loss + 0.1 * dial_out['loss']
-        loss = da_loss + dial_out['loss']
+        loss = dial_out['loss']
         #GAT
         #sg_input = torch_geometric.data.Batch.from_data_list(sg_input).to(input_ids.device)
         # x_encoded, edge_attr_encoded,_ = self.scene_graph_encoder(sg_input)
@@ -168,7 +168,7 @@ class Graph2Dial(GPT2PreTrainedModel):
         # print(torch.argmax(torch.nn.functional.softmax(self.transformer(input_ids=input_ids[:, :50], return_dict=True, output_attentions=output_attentions,
         #                                                            output_hidden_states=output_hidden_states)['logits'][:, -1, :]), dim=1))
         print(loss)
-        return loss#, da_loss,pred_loss, dial_out
+        return dial_out#, da_loss,pred_loss, dial_out
 
     def sample(
         self,
