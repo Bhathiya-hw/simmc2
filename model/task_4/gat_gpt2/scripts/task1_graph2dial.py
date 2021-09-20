@@ -87,14 +87,15 @@ class Graph2Dial(GPT2PreTrainedModel):
         #conv_labels_new = F.pad(labels, pad=(dense_x_executed.shape[1], 0), value=-100)
 
         #Concat GAT+GPT2 Input
-        conv_input_embed = self.transformer.transformer.wte(input_ids)
-        sg_embeds = self.encoder_decoder(questions= predict_input_ids, gt_scene_graphs = sg_input, programs_input = None, full_answers = None,
-                              short_answers = None)#torch.cat((dense_x_executed, conv_input_embed ),dim =1)
-        inputs_embeds = torch.cat((sg_embeds.unsqueeze(1), conv_input_embed), dim=1)
+        #conv_input_embed = self.transformer.transformer.wte(input_ids)
+        #sg_embeds = self.encoder_decoder(questions= predict_input_ids, gt_scene_graphs = sg_input, programs_input = None, full_answers = None,
+        #                      short_answers = None)#torch.cat((dense_x_executed, conv_input_embed ),dim =1)
+        #inputs_embeds = torch.cat((sg_embeds.unsqueeze(1), conv_input_embed), dim=1)
 
         #GPT2
-        dial_out = self.transformer(inputs_embeds=inputs_embeds, labels=labels,return_dict=return_dict,output_attentions=output_attentions,
+        dial_out = self.transformer(input_ids=input_ids, labels=input_ids,return_dict=return_dict,output_attentions=output_attentions,
                        output_hidden_states=output_hidden_states)
+        # print("baseline")
         # dial_out = self.transformer(input_ids=input_ids, labels=input_ids,return_dict=True,output_attentions=output_attentions,
         #                 output_hidden_states=output_hidden_states)
         # print(torch.argmax(torch.nn.functional.softmax(self.transformer(input_ids=input_ids[:, :50], return_dict=True, output_attentions=output_attentions,
