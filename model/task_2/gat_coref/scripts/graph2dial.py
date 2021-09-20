@@ -96,16 +96,19 @@ class Graph2Dial(GPT2PreTrainedModel):
         # yes_embedding = self.transformer.transformer.wte(yes_token)
         no_token = self.tokenizer.encode("NO")
         # no_embedding = self.transformer.transformer.wte(no_token)
+        eos = torch.tensor([self.tokenizer.eos_token_id])
+        eos_token_embed = self.transformer.transformer.wte(torch.tensor([eos]))
 
         target_classification = torch.tensor([yes_token if sg_input.x[:, 0][i].item() in answer else no_token for i in range(sg_input.x.shape[0])]).to(answer.device)
 
         target_classification_embedding = self.transformer.transformer.wte(target_classification)
         target_classification_embedding = torch.stack(((x_encoded.unsqueeze(1), x_executed.unsqueeze(1), target_classification_embedding)))
         target_classification_embedding = torch.flatten(target_classification_embedding.transpose(0,1), start_dim=0, end_dim=1)
-
+        target_classification_embedding = torch.cat((target_classification_embedding, eos_token_embed.unsqueeze(0)))
 
         label_filling = torch.full((x_encoded.shape[0], 2), fill_value=-100).to(answer.device)
         target_classification = torch.flatten(torch.cat((label_filling,target_classification),dim=1)).unsqueeze(1)
+        target_classification = torch.cat((target_classification, eos.unsqueeze(0)))
 
         return target_classification_embedding,target_classification
         # input = torch.stack((x_encoded,x_executed,target_classification_embedding))
@@ -130,6 +133,7 @@ class Graph2Dial(GPT2PreTrainedModel):
                                                                 slot_values=slot_values,
                                                                 request_slots=request_slots)
 
+        # conv_input_embed = self.transformer.transformer.wte(input_ids)
         new_inputs, new_labels =  self.classification_target(x_encoded,x_executed, sg_input,answer)
         new_input_embeds = torch.cat((question_encoded, new_inputs))
         new_input_labels = torch.cat((labels[:predict_input_ids.shape[0]], new_labels))
@@ -200,7 +204,7 @@ class Graph2Dial(GPT2PreTrainedModel):
         for i, output in enumerate(dial_out[1]):
             print("Input : " + (''.join(token for token in self.tokenizer.convert_ids_to_tokens(print_labels.T[i]))).replace('Ġ', " "))
             print("Output : " + (''.join(token for token in self.tokenizer.convert_ids_to_tokens(torch.argmax(output, dim=1))).replace('Ġ', " ")))
-
+        del print_labels, loss
         return dial_out#, da_loss,pred_loss, dial_out
 
     def sample(
