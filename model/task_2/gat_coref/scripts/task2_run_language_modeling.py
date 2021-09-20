@@ -586,9 +586,9 @@ def train(args, train_dataset, model: PreTrainedModel, tokenizer: PreTrainedToke
 
             # print("Input : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(labels[context.shape[0]:]))).replace('Ġ', " "))
             # print("Output : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(torch.argmax(outputs[1],dim=2))).replace('Ġ', " ")))
-            for i, output in enumerate(outputs[1]):
-                print("Input : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(input_ids.T[i]))).replace('Ġ', " "))
-                print("Output : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(torch.argmax(output, dim=1))).replace('Ġ', " ")))
+            # for i, output in enumerate(outputs[1]):
+            #     print("Input : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(input_ids.T[i]))).replace('Ġ', " "))
+            #     print("Output : " + (''.join(token for token in tokenizer.convert_ids_to_tokens(torch.argmax(output, dim=1))).replace('Ġ', " ")))
 
             loss = outputs[
                 0
