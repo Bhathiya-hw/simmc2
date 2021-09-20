@@ -28,12 +28,12 @@ FIELDNAME_OBJECTS = 'objects'
 START_OF_MULTIMODAL_CONTEXTS = "<SOM>"
 END_OF_MULTIMODAL_CONTEXTS = "<EOM>"
 START_BELIEF_STATE = "Belief State :"
-START_OF_RESPONSE = "Response: => "
+START_OF_RESPONSE = "<SOR> Response: => "
 END_OF_BELIEF = "<EOB>"
 END_OF_SENTENCE = "<EOS>"
 
 TEMPLATE_PREDICT = "{context} {START_OF_RESPONSE}"
-TEMPLATE_TARGET = "{context} {START_OF_RESPONSE} {disambiguate_label} {belief_state} {END_OF_SENTENCE}"
+TEMPLATE_TARGET = "{context} {START_OF_RESPONSE} {disambiguate_label} {END_OF_SENTENCE}"
 
 # No belief state predictions and target.
 TEMPLATE_PREDICT_NOBELIEF = "{context} {START_OF_RESPONSE} "
@@ -95,10 +95,15 @@ def convert_json_to_flattened(
         lst_context = []
         # prev_mentioned_objects = None
         for turn in dialog[FIELDNAME_DIALOG]:
+            if 'disambiguation_label' not in turn.keys():
+                label = disambiguate_labels.append('DISAMBIGUATE = UNDEFINED')
+            else:
+                label = 'YES' if turn['disambiguation_label'] else 'NO'
+                disambiguate_labels.append(label)
             user_uttr = turn[FIELDNAME_USER_UTTR].replace("\n", " ").strip()
-            user_belief = turn[FIELDNAME_BELIEF_STATE]
+            # user_belief = turn[FIELDNAME_BELIEF_STATE]
             asst_uttr = turn[FIELDNAME_ASST_UTTR].replace("\n", " ").strip()
-            # sys_belief = turn[FIELDNAME_SYSTEM_STATE]
+            sys_belief = turn[FIELDNAME_SYSTEM_STATE]
             # Format main input context
             context = ""
 
@@ -127,39 +132,82 @@ def convert_json_to_flattened(
             context = " ".join(lst_context[-len_context:])
 
             # Format belief state
-            if use_belief_states:
+            # if use_belief_states:
+            #     belief_state = []
+            #     # for bs_per_frame in user_belief:
+            #     str_belief_state_per_frame = (
+            #         "{act} [ {slot_values} ] ({request_slots}) < {objects} >".format(
+            #             act=user_belief["act"].strip(),
+            #             slot_values=", ".join(
+            #                 [
+            #                     f"{k.strip()} = {str(v).strip()}"
+            #                     for k, v in user_belief["act_attributes"][
+            #                         "slot_values"
+            #                     ].items()
+            #                 ]
+            #             ),
+            #             request_slots=", ".join(
+            #                 user_belief["act_attributes"]["request_slots"]
+            #             ),
+            #             objects=", ".join(
+            #                 [str(o) for o in user_belief["act_attributes"]["objects"]]
+            #             ),
+            #         )
+            #     )
+
+            if use_sys_belief_state:
                 belief_state = []
                 # for bs_per_frame in user_belief:
                 str_belief_state_per_frame = (
                     "{act} [ {slot_values} ] ({request_slots}) < {objects} >".format(
-                        act=user_belief["act"].strip(),
+                        act=sys_belief["act"].strip(),
                         slot_values=", ".join(
                             [
                                 f"{k.strip()} = {str(v).strip()}"
-                                for k, v in user_belief["act_attributes"][
+                                for k, v in sys_belief["act_attributes"][
                                     "slot_values"
                                 ].items()
                             ]
                         ),
                         request_slots=", ".join(
-                            user_belief["act_attributes"]["request_slots"]
+                            sys_belief["act_attributes"]["request_slots"]
                         ),
                         objects=", ".join(
-                            [str(o) for o in user_belief["act_attributes"]["objects"]]
+                            [str(o) for o in sys_belief["act_attributes"]["objects"]]
                         ),
                     )
                 )
-                # belief_state.append(str_belief_state_per_frame)
-            if 'disambiguation_label' not in turn.keys():
-                # label = disambiguate_labels.append('DISAMBIGUATE = UNDEFINED')
-                label = "IGNORE"
-                context += ' UNAVAIL '
-            else:
-                label = 'YES' if turn['disambiguation_label'] else 'NO'
-                context += ' AVAIL '
-            disambiguate_labels.append(label)
+                turn_attribute = []
+                belief_state.append(str_belief_state_per_frame)
+                turn_attribute.append(sys_belief['act'])
+                for slot, val in sys_belief["act_attributes"]["slot_values"].items():
+                    if type(val) is dict:
+                        turn_attribute.append(slot)
+                        for k,v in val.items():
+                            if type(v) is list:
+                                turn_attribute.append(','.join(v))
+                            else:
+                                turn_attribute.append(k + " = " + str(v))
+                    else:
+                        turn_attribute.append(slot + " = " + str(val))
+                for rslot  in sys_belief["act_attributes"]["request_slots"]:
+                    turn_attribute.append(rslot)
+                for object in sys_belief["act_attributes"]["objects"]:
+                    turn_attribute.append( "Object ID: " + str(object))
+                beliefs.append(','.join(turn_attribute))
+                # Track OOVs
+                if output_path_special_tokens != "":
+                    oov.add(sys_belief["act"])
+                    for slot_name in sys_belief["act_attributes"]["slot_values"]:
+                        oov.add(str(slot_name))
+                        # slot_name, slot_value = kv[0].strip(), kv[1].strip()
+                        # oov.add(slot_name)
+                        # oov.add(slot_value)
 
-            predict = TEMPLATE_PREDICT.format(
+                str_belief_state = " ".join(belief_state)
+
+                # Format the main input
+                predict = TEMPLATE_PREDICT.format(
                     context=context,
                     # START_OF_MULTIMODAL_CONTEXTS = START_OF_MULTIMODAL_CONTEXTS,
                     # objects = multimodaL_objects,
@@ -169,113 +217,37 @@ def convert_json_to_flattened(
                     # END_OF_BELIEF=END_OF_BELIEF,
                     START_OF_RESPONSE=START_OF_RESPONSE,
                 )
-            predicts.append(predict)
+                if 'disambiguation_label' in turn.keys():
+                    predicts.append(predict)
 
                 # Format the main output
-            target = TEMPLATE_TARGET.format(
+                target = TEMPLATE_TARGET.format(
                     context=context,
                     START_OF_RESPONSE=START_OF_RESPONSE,
                     disambiguate_label=label,
-                    belief_state = str_belief_state_per_frame,
                     END_OF_SENTENCE=END_OF_SENTENCE,
                 )
-            targets.append(target)
+                if 'disambiguation_label' in turn.keys():
+                    targets.append(target)
 
+                relvant_turn = max([int(i) for i in dialog['scene_ids'].keys() if int(i)<=turn['turn_idx']])
+                scene = dialog['scene_ids'][str(relvant_turn)]
+                scenes.append(scene)
+            else:
+                # Format the main input
+                predict = TEMPLATE_PREDICT_NOBELIEF.format(
+                    context=context, START_OF_RESPONSE=START_OF_RESPONSE
+                )
+                predicts.append(predict)
 
-
-            # if use_sys_belief_state:
-                # belief_state = []
-                # # for bs_per_frame in user_belief:
-                # str_belief_state_per_frame = (
-                #     "{act} [ {slot_values} ] ({request_slots}) < {objects} >".format(
-                #         act=sys_belief["act"].strip(),
-                #         slot_values=", ".join(
-                #             [
-                #                 f"{k.strip()} = {str(v).strip()}"
-                #                 for k, v in sys_belief["act_attributes"][
-                #                     "slot_values"
-                #                 ].items()
-                #             ]
-                #         ),
-                #         request_slots=", ".join(
-                #             sys_belief["act_attributes"]["request_slots"]
-                #         ),
-                #         objects=", ".join(
-                #             [str(o) for o in sys_belief["act_attributes"]["objects"]]
-                #         ),
-                #     )
-                # )
-                # turn_attribute = []
-                # belief_state.append(str_belief_state_per_frame)
-                # turn_attribute.append(sys_belief['act'])
-                # for slot, val in sys_belief["act_attributes"]["slot_values"].items():
-                #     if type(val) is dict:
-                #         turn_attribute.append(slot)
-                #         for k,v in val.items():
-                #             if type(v) is list:
-                #                 turn_attribute.append(','.join(v))
-                #             else:
-                #                 turn_attribute.append(k + " = " + str(v))
-                #     else:
-                #         turn_attribute.append(slot + " = " + str(val))
-                # for rslot  in sys_belief["act_attributes"]["request_slots"]:
-                #     turn_attribute.append(rslot)
-                # for object in sys_belief["act_attributes"]["objects"]:
-                #     turn_attribute.append( "Object ID: " + str(object))
-                # beliefs.append(','.join(turn_attribute))
-                # # Track OOVs
-                # if output_path_special_tokens != "":
-                #     oov.add(sys_belief["act"])
-                #     for slot_name in sys_belief["act_attributes"]["slot_values"]:
-                #         oov.add(str(slot_name))
-                #         # slot_name, slot_value = kv[0].strip(), kv[1].strip()
-                #         # oov.add(slot_name)
-                #         # oov.add(slot_value)
-                #
-                # str_belief_state = " ".join(belief_state)
-                #
-                # # Format the main input
-                # predict = TEMPLATE_PREDICT.format(
-                #     context=context,
-                #     # START_OF_MULTIMODAL_CONTEXTS = START_OF_MULTIMODAL_CONTEXTS,
-                #     # objects = multimodaL_objects,
-                #     # END_OF_MULTIMODAL_CONTEXTS = END_OF_MULTIMODAL_CONTEXTS,
-                #     # START_BELIEF_STATE=START_BELIEF_STATE,
-                #     # belief_state=str_belief_state,
-                #     # END_OF_BELIEF=END_OF_BELIEF,
-                #     START_OF_RESPONSE=START_OF_RESPONSE,
-                # )
-                # if 'disambiguation_label' in turn.keys():
-                #     predicts.append(predict)
-                #
-                # # Format the main output
-                # target = TEMPLATE_TARGET.format(
-                #     context=context,
-                #     START_OF_RESPONSE=START_OF_RESPONSE,
-                #     disambiguate_label=label,
-                #     END_OF_SENTENCE=END_OF_SENTENCE,
-                # )
-                # if 'disambiguation_label' in turn.keys():
-                #     targets.append(target)
-                #
-                # relvant_turn = max([int(i) for i in dialog['scene_ids'].keys() if int(i)<=turn['turn_idx']])
-                # scene = dialog['scene_ids'][str(relvant_turn)]
-                # scenes.append(scene)
-            # else:
-            #     # Format the main input
-            #     predict = TEMPLATE_PREDICT_NOBELIEF.format(
-            #         context=context, START_OF_RESPONSE=START_OF_RESPONSE
-            #     )
-            #     predicts.append(predict)
-            #
-            #     # Format the main output
-            #     target = TEMPLATE_TARGET_NOBELIEF.format(
-            #         context=context,
-            #         response=asst_uttr,
-            #         END_OF_SENTENCE=END_OF_SENTENCE,
-            #         START_OF_RESPONSE=START_OF_RESPONSE,
-            #     )
-            #     targets.append(target)
+                # Format the main output
+                target = TEMPLATE_TARGET_NOBELIEF.format(
+                    context=context,
+                    response=asst_uttr,
+                    END_OF_SENTENCE=END_OF_SENTENCE,
+                    START_OF_RESPONSE=START_OF_RESPONSE,
+                )
+                targets.append(target)
 
     # Create a directory if it does not exist
     directory = os.path.dirname(output_path_predict)
@@ -416,12 +388,3 @@ def parse_flattened_result(to_parse):
                     belief.append(d)
 
     return belief
-
-def parse_disambiguation_label_from_file(path):
-    results = []
-    with open(path, "r") as f_in:
-        for line in f_in:
-            label = line.split('=>')[1].replace('<EOS>', '').strip() == 'YES' #parse_flattened_result(line)
-            results.append(label)
-
-    return results
