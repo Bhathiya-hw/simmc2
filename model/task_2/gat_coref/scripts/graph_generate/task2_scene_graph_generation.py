@@ -105,10 +105,10 @@ if __name__ == "__main__":
                     instance_node_id = "O" + str(instance['index'])
                     scene_graph[scene][instance_node_id] = object_graphs[instance['prefab_path']].copy()
                     scene_graph[scene][instance_node_id]['prefab'] = instance['prefab_path']
-                    scene_graph[scene][instance_node_id]['unique_id'] = instance['unique_id']
+                    scene_graph[scene][instance_node_id]['unique_id'] = "U" + str(instance['unique_id'])
                     scene_graph[scene][instance_node_id]['bbox'] = instance['bbox']
                     if 'relation' in scene_graph[scene][instance_node_id].keys():
-                        print("Not empty")
+                      print("Not empty")
                     if instance_node_id in object_relationships.keys():
                         scene_graph[scene][instance_node_id]['relation'] = object_relationships[instance_node_id]
                     else:

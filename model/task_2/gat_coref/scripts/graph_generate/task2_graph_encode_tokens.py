@@ -48,7 +48,7 @@ if __name__ == "__main__":
              # prefab_path = object_graph['prefab']
              relations = object_graph['relation']
 
-             unique_id_attr = 'unique_id = '+ str(object_graph['unique_id'])
+             unique_id_attr = str(object_graph['unique_id'])
              attributes.add(unique_id_attr)
 
              object_attr = visual + non_visual + [unique_id_attr]

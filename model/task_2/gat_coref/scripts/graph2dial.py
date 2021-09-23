@@ -134,10 +134,10 @@ class Graph2Dial(GPT2PreTrainedModel):
                                                                 request_slots=request_slots)
 
         # conv_input_embed = self.transformer.transformer.wte(input_ids)
-        new_inputs, new_labels =  self.classification_target(x_encoded,x_executed, sg_input,answer)
-        new_input_embeds = torch.cat((question_encoded, new_inputs))
-        new_input_labels = torch.cat((labels[:predict_input_ids.shape[0]], new_labels))
-        dial_out = self.transformer(inputs_embeds=new_input_embeds.transpose(1, 0), labels=new_input_labels.T, return_dict=True, output_attentions=output_attentions, output_hidden_states=True)
+        # new_inputs, new_labels =  self.classification_target(x_encoded,x_executed, sg_input,answer)
+        # new_input_embeds = torch.cat((question_encoded, new_inputs))
+        # new_input_labels = torch.cat((labels[:predict_input_ids.shape[0]], new_labels))
+        # dial_out = self.transformer(inputs_embeds=new_input_embeds.transpose(1, 0), labels=new_input_labels.T, return_dict=True, output_attentions=output_attentions, output_hidden_states=True)
 
         #[[self.tokenizer.decode(sg_input.x[:,0][i]) for i in range(sg_input.x.shape[0])]]
 
@@ -148,10 +148,10 @@ class Graph2Dial(GPT2PreTrainedModel):
         # print([(self.tokenizer.decode(sg_input.x[i][0]), torch.nn.functional.sigmoid(direct_logits[i])) for i in range(direct_logits.shape[0])])
         # da_loss = self.direct_ans_criterion(direct_logits.squeeze(1), target_classification)
 
-        # conv_input_embed = self.transformer.transformer.wte(input_ids)
-        # inputs_embeds = torch.cat((x_executed.unsqueeze(1), conv_input_embed), dim=0) #fine_tune -1
+        conv_input_embed = self.transformer.transformer.wte(input_ids)
+        inputs_embeds = torch.cat((x_executed.unsqueeze(1), conv_input_embed), dim=0) #fine_tune -1
         # inputs_embeds = torch.cat((x_encoded.unsqueeze(1), conv_input_embed), dim=0)
-        # dial_out = self.transformer(inputs_embeds=inputs_embeds.transpose(1,0), labels=labels.T, return_dict=True,output_attentions=output_attentions, output_hidden_states=True)
+        dial_out = self.transformer(inputs_embeds=inputs_embeds.transpose(1,0), labels=labels.T, return_dict=True,output_attentions=output_attentions, output_hidden_states=True)
 
         # final_layer = dial_out['hidden_states'][12]
         # prediction_relevance = torch.mean(torch.nn.functional.softmax(torch.matmul(final_layer.squeeze(0), x_executed.transpose(1, 0)), dim=1),dim=0)
@@ -162,7 +162,7 @@ class Graph2Dial(GPT2PreTrainedModel):
         #
         # print("da_loss:{}  dial_out: {}".format(da_loss, dial_out['loss']))
         # loss = da_loss + pred_loss + 0.1 * dial_out['loss']
-        loss = dial_out['loss']
+        # loss = dial_out['loss']
         #GAT
         #sg_input = torch_geometric.data.Batch.from_data_list(sg_input).to(input_ids.device)
         # x_encoded, edge_attr_encoded,_ = self.scene_graph_encoder(sg_input)
@@ -198,13 +198,13 @@ class Graph2Dial(GPT2PreTrainedModel):
         #                 output_hidden_states=output_hidden_states)
         # print(torch.argmax(torch.nn.functional.softmax(self.transformer(input_ids=input_ids[:, :50], return_dict=True, output_attentions=output_attentions,
         #                                                            output_hidden_states=output_hidden_states)['logits'][:, -1, :]), dim=1))
-        print(loss)
-        print_labels = new_input_labels.detach().clone()
-        print_labels[print_labels == -100] = 0
-        for i, output in enumerate(dial_out[1]):
-            print("Input : " + (''.join(token for token in self.tokenizer.convert_ids_to_tokens(print_labels.T[i]))).replace('Ġ', " "))
-            print("Output : " + (''.join(token for token in self.tokenizer.convert_ids_to_tokens(torch.argmax(output, dim=1))).replace('Ġ', " ")))
-        del print_labels, loss
+        # print(loss)
+        # print_labels = new_input_labels.detach().clone()
+        # print_labels[print_labels == -100] = 0
+        # for i, output in enumerate(dial_out[1]):
+        #     print("Input : " + (''.join(token for token in self.tokenizer.convert_ids_to_tokens(print_labels.T[i]))).replace('Ġ', " "))
+        #     print("Output : " + (''.join(token for token in self.tokenizer.convert_ids_to_tokens(torch.argmax(output, dim=1))).replace('Ġ', " ")))
+        # del print_labels, loss
         return dial_out#, da_loss,pred_loss, dial_out
 
     def sample(

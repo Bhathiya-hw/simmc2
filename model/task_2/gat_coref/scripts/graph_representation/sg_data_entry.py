@@ -175,7 +175,7 @@ class sg_feature_lookup:
         ##################################
         scene = self.graph[sg_this]
         # SG_ENCODING_TEXT = GQA_gt_sg_feature_lookup.SG_ENCODING_TEXT
-
+        local2unique = {str(k):v['unique_id'] for k,v in scene.items()}
         ##################################
         # graph node: objects
         ##################################
@@ -216,7 +216,7 @@ class sg_feature_lookup:
             # - obj['x'], obj['y'], obj['w'], obj['h']
             ##################################
             # MAX_OBJ_TOKEN_LEN = 4 # 1 name + 3 attributes
-            MAX_OBJ_TOKEN_LEN = 19
+            MAX_OBJ_TOKEN_LEN = 20
 
             # 4 X '<pad>'
             object_token_arr = np.ones(MAX_OBJ_TOKEN_LEN, dtype=np.int_) * self.tokenize.pad_token_type_id
@@ -233,8 +233,8 @@ class sg_feature_lookup:
             ##################################
             # Comment out this to see the importance of attributes
             ##################################
-
-            for attr_idx, attr in enumerate(set(scene[objId]['non-visual'] + scene[objId]['visual'])):
+            local2unique[objId]
+            for attr_idx, attr in enumerate(set(scene[objId]['non-visual'] + scene[objId]['visual'] + [str(scene[objId]['unique_id'])])):
                 object_token_arr[attr_idx + 1] = tokenizer.convert_tokens_to_ids(attr)#mini_dict[attr]#tokenizer.vocab[attr]
 
             node_feature_list.append(object_token_arr)
@@ -317,6 +317,6 @@ class sg_feature_lookup:
         # yanhao: add an additional variable to datum:
         added_sym_edge = torch.LongTensor(added_sym_edge_list)
         datum.added_sym_edge = added_sym_edge
-
+        datum.local2unique = local2unique
         return datum
 
