@@ -353,7 +353,8 @@ command line""",
     args.device = torch.device(
         "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
     )
-    args.n_gpu = 0 if args.no_cuda else torch.cuda.device_count()
+    torch.cuda.set_device(2)
+    args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
 
     set_seed(args)
 

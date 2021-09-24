@@ -575,7 +575,8 @@ def train(args, train_dataset, model: PreTrainedModel, tokenizer: PreTrainedToke
 
             # torch.cat((torch.stack((answer.squeeze(1), answer.squeeze(1))), torch.tensor([[tokenizer.eos_token_id]*2]).reshape(-1, 1)),dim =1)
             input_ids = torch.cat((context,act, slot_values, request_slots, answer,torch.tensor([[tokenizer.eos_token_id]*context.shape[1]]).reshape(-1, 1)))
-            to_enc_dec = torch.cat((context,act, slot_values, request_slots)) #context #torch.cat((context,act, slot_values, request_slots, answer))
+#            to_enc_dec = torch.cat((context,act, slot_values, request_slots)) #context #torch.cat((context,act, slot_values, request_slots, answer))
+            to_enc_dec = context
             labels = torch.cat((torch.full_like(sg_input.x[:,0].unsqueeze(1), fill_value=-100),input_ids))
 
             # context = context.to(args.device)
@@ -1085,7 +1086,7 @@ def main():
         device = torch.device(
             "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
         )
-        # torch.cuda.set_device(2)
+        torch.cuda.set_device(2)
         args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
