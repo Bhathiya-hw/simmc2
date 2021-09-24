@@ -22,6 +22,7 @@ if __name__ == "__main__":
         "--input_path_json", help="input path to the original dialog data"
     )
     parser.add_argument("--output_path_target", help="output path for full target")
+    parser.add_argument("--output_path_predict", help="output path for prediction")
     parser.add_argument(
         "--input_path_special_tokens",
         help="input path for special tokens. blank if not provided",
@@ -48,6 +49,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     input_path_json = args.input_path_json
     output_path_target = args.output_path_target
+    output_path_predict = args.output_path_predict
     input_path_special_tokens = args.input_path_special_tokens
     output_path_special_tokens = args.output_path_special_tokens
     len_context = args.len_context
@@ -58,6 +60,7 @@ if __name__ == "__main__":
     task2.convert_json_to_flattened(
         input_path_json,
         output_path_target,
+        output_path_predict,
         input_path_special_tokens=input_path_special_tokens,
         output_path_special_tokens=output_path_special_tokens,
         len_context=len_context,

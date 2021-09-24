@@ -49,6 +49,7 @@ END_GRAPH_INPUT = "<EGI>"
 def convert_json_to_flattened(
     input_path_json,
     output_path_target,
+    output_path_predict,
     len_context=2,
     use_multimodal_contexts=True,
     use_belief_states=False,
@@ -88,7 +89,9 @@ def convert_json_to_flattened(
         # If a new output path for special tokens is given,
         # we track new OOVs
         oov = set()
-    flatten_dicts = {}
+    target_dicts = {}
+    predict_dict = {}
+    predict_keys = ['user_utterance','prev_asst_utterance','visual_objects','scene', 'turn_idx' , 'dialog_idx']
     for _, dialog in enumerate(data):
         dialog_json = {}
         prev_asst_uttr = None
@@ -97,7 +100,7 @@ def convert_json_to_flattened(
             user_belief = turn[FIELDNAME_BELIEF_STATE]
             # if not user_belief["act_attributes"]["objects"]:
             #     user_belief["act_attributes"]["objects"] = ['RT']
-            flatten_dict_key = str(dialog['dialogue_idx']) + "_" + str(turn['turn_idx'])
+            dialogue_dict_key= str(dialog['dialogue_idx']) + "_" + str(turn['turn_idx'])
             turn_dict = {}
             user_uttr = turn[FIELDNAME_USER_UTTR].replace("\n", " ").strip()
 
@@ -156,8 +159,9 @@ def convert_json_to_flattened(
 
             current_turn_key = "turn_" + str(current_turn_idx)
             dialog_json[current_turn_key] = turn_dict
-            flatten_dicts[flatten_dict_key]  = turn_dict
+            target_dicts[dialogue_dict_key]  = turn_dict
 
+            predict_dict[dialogue_dict_key] = {k:v for k,v in turn_dict.items() if k in predict_keys}
             # Track OOVs
             if output_path_special_tokens != "":
                 oov.add(user_belief["act"])
@@ -175,8 +179,12 @@ def convert_json_to_flattened(
         os.makedirs(directory, exist_ok=True)
 
     with open(output_path_target, "w", encoding="utf-8") as f_target:
-            print(len(flatten_dicts))
-            json.dump(flatten_dicts,f_target)
+            print(len(target_dicts))
+            json.dump(target_dicts, f_target)
+
+    with open(output_path_predict, "w", encoding="utf-8") as f_target:
+            print(len(predict_dict))
+            json.dump(predict_dict, f_target)
 
     # with open(output_path_target, "r", encoding="utf-8") as f_read:
     #         # print(len(flatten_dicts))

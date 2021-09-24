@@ -254,7 +254,14 @@ class MiniDictDataset(Dataset):
         return len(self.context)
 
     def __getitem__(self, i):
-        return torch.tensor(self.context[i], dtype=torch.long), torch.tensor(self.acts[i], dtype=torch.long), torch.tensor(self.slot_values[i], dtype=torch.long),torch.tensor(self.request_slots[i], dtype=torch.long), self.scene_data[i],torch.tensor(self.answers[i], dtype=torch.long)
+        print('context', self.context[i])
+        print('sv', self.slot_values[i])
+        print('rslot', self.request_slots[i])
+        print('answer', self.answers[i])
+        print('scene_data', self.scene_data[i])
+        return torch.tensor(self.context[i], dtype=torch.long), torch.tensor(self.acts[i], dtype=torch.long), \
+               torch.tensor(self.slot_values[i], dtype=torch.long),torch.tensor(self.request_slots[i], dtype=torch.long), \
+               self.scene_data[i],torch.tensor(self.answers[i], dtype=torch.long)
         # if self.belief_tokens:
         #     return torch.tensor(self.examples[i], dtype=torch.long), torch.tensor(self.predict_lines[i], dtype=torch.long), self.scenes[i], torch.tensor(self.belief_tokens[i], dtype=torch.long)
         #     return torch.tensor(self.examples[i], dtype=torch.long), torch.tensor(self.predict_lines[i], dtype=torch.long), self.scenes[i], torch.tensor([[0]])
@@ -1078,7 +1085,7 @@ def main():
         device = torch.device(
             "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
         )
-        torch.cuda.set_device(2)
+        # torch.cuda.set_device(2)
         args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)

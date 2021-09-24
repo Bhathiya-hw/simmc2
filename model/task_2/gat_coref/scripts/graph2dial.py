@@ -120,10 +120,10 @@ class Graph2Dial(GPT2PreTrainedModel):
                             encoder_attention_mask=None, use_cache=None):
 
 
-        print("answer :", self.tokenizer.decode(input_ids[predict_input_ids.shape[0]+1:-2][:,0]))
-        target_classification = torch.tensor([1.0 if sg_input.x[:, 0][i].item() in answer else 0.0 for i in range(sg_input.x.shape[0])]).to(sg_input.x.device)
+        # print("answer :", self.tokenizer.decode(input_ids[predict_input_ids.shape[0]+1:-2][:,0]))
+        # target_classification = torch.tensor([1.0 if sg_input.x[:, 0][i].item() in answer else 0.0 for i in range(sg_input.x.shape[0])]).to(sg_input.x.device)
         # direct answer loss calculation
-        question_encoded = self.transformer.transformer.wte(predict_input_ids)
+        question_encoded = self.transformer.transformer.wte(predict_input_ids.T)
         x_encoded, x_executed, edge_attn, sg_embeds = self.encoder_decoder(questions=question_encoded,
                                                                 gt_scene_graphs=sg_input,
                                                                 programs_input=slot_values,
@@ -149,9 +149,10 @@ class Graph2Dial(GPT2PreTrainedModel):
         # da_loss = self.direct_ans_criterion(direct_logits.squeeze(1), target_classification)
 
         conv_input_embed = self.transformer.transformer.wte(input_ids)
-        inputs_embeds = torch.cat((x_executed.unsqueeze(1), conv_input_embed), dim=0) #fine_tune -1
+        inputs_embeds = torch.cat((x_executed.unsqueeze(0), conv_input_embed), dim=1) #fine_tune -1
         # inputs_embeds = torch.cat((x_encoded.unsqueeze(1), conv_input_embed), dim=0)
-        dial_out = self.transformer(inputs_embeds=inputs_embeds.transpose(1,0), labels=labels.T, return_dict=True,output_attentions=output_attentions, output_hidden_states=True)
+        # dial_out = self.transformer(inputs_embeds=inputs_embeds.transpose(1,0), labels=labels.T, return_dict=True,output_attentions=output_attentions, output_hidden_states=True)
+        dial_out = self.transformer(inputs_embeds=inputs_embeds, return_dict=True, output_attentions=output_attentions, output_hidden_states=True)
 
         # final_layer = dial_out['hidden_states'][12]
         # prediction_relevance = torch.mean(torch.nn.functional.softmax(torch.matmul(final_layer.squeeze(0), x_executed.transpose(1, 0)), dim=1),dim=0)
@@ -488,6 +489,5 @@ class Graph2Dial(GPT2PreTrainedModel):
             "attention_mask": attention_mask,
             "token_type_ids": token_type_ids,
             "sg_input": sg_input,
-            "belief_input": belief_input,
             "predict_input_ids": input_ids
         }
