@@ -40,10 +40,12 @@ TEMPLATE_TARGET_NOBELIEF = "{context} {START_OF_RESPONSE} {response} {END_OF_SEN
 
 def convert_json_to_flattened(
     input_path_json,
+    input_scene_graph,
     output_path_sys_belief,
     output_path_predict,
     output_path_scene,
     output_path_target,
+    # output_path_disambiguate,
     len_context=2,
     use_multimodal_contexts=True,
     use_belief_states=False,
@@ -59,10 +61,14 @@ def convert_json_to_flattened(
     with open(input_path_json, "r") as f_in:
         data = json.load(f_in)["dialogue_data"]
 
+    with open(input_scene_graph, "r") as f_in:
+        scene_graph = json.load(f_in)
+
     predicts = []
     targets = []
     scenes = []
     beliefs = []
+    disambiguate_labels = []
     if input_path_special_tokens != "":
         with open(input_path_special_tokens, "r") as f_in:
             special_tokens = json.load(f_in)
@@ -91,6 +97,11 @@ def convert_json_to_flattened(
         lst_context = []
 
         for turn in dialog[FIELDNAME_DIALOG]:
+            # if 'disambiguation_label' not in turn.keys():
+            #     disambiguate_labels.append('DISAMBIGUATE = UNDEFINED')
+            # else:
+            #     label = 'DISAMBIGUATE = YES' if turn['disambiguation_label'] else 'DISAMBIGUATE = NO'
+            #     disambiguate_labels.append(label)
             user_uttr = turn[FIELDNAME_USER_UTTR].replace("\n", " ").strip()
             # user_belief = turn[FIELDNAME_BELIEF_STATE]
             asst_uttr = turn[FIELDNAME_ASST_UTTR].replace("\n", " ").strip()
@@ -143,6 +154,9 @@ def convert_json_to_flattened(
             #             ),
             #         )
             #     )
+            relvant_turn = max([int(i) for i in dialog['scene_ids'].keys() if int(i) <= turn['turn_idx']])
+            scene = dialog['scene_ids'][str(relvant_turn)]
+            scenes.append(scene)
 
             if use_sys_belief_state:
                 belief_state = []
@@ -162,7 +176,8 @@ def convert_json_to_flattened(
                             sys_belief["act_attributes"]["request_slots"]
                         ),
                         objects=", ".join(
-                            [str(o) for o in sys_belief["act_attributes"]["objects"]]
+                            add_visual_descriptions(scene_graph[scene + '_scene.json'],sys_belief["act_attributes"]["objects"])
+                            #[str(o) for o in sys_belief["act_attributes"]["objects"]]
                         ),
                     )
                 )
@@ -217,9 +232,6 @@ def convert_json_to_flattened(
                 )
                 targets.append(target)
 
-                relvant_turn = max([int(i) for i in dialog['scene_ids'].keys() if int(i)<=turn['turn_idx']])
-                scene = dialog['scene_ids'][str(relvant_turn)]
-                scenes.append(scene)
             else:
                 # Format the main input
                 predict = TEMPLATE_PREDICT_NOBELIEF.format(
@@ -264,6 +276,10 @@ def convert_json_to_flattened(
     with open(output_path_target, "w", encoding="utf-8") as f_target:
         Y = "\n".join(targets)
         f_target.write(Y)
+    #
+    # with open(output_path_disambiguate, "w", encoding="utf-8") as f_target:
+    #     Y = "\n".join(disambiguate_labels)
+    #     f_target.write(Y)
 
     if output_path_special_tokens != "":
         # Create a directory if it does not exist
@@ -276,26 +292,80 @@ def convert_json_to_flattened(
             special_tokens["additional_special_tokens"].extend(list(oov))
             json.dump(special_tokens, f_special_tokens)
 
+def add_visual_descriptions(graph, object_ids):
+    feature_strings = []
+    for o in object_ids:
+        slot_value_pairs = {}
+        feature_string = str(o) + ': '
+        graph_key = 'Object ID: ' + str(o)
+        if graph_key not in list(graph.keys()):
+            feature_string += '{}:'.format(str(o))
+            continue
+        visual_features = graph['Object ID: ' + str(o)]['visual']
+        for visual_feature in visual_features:
+            slot_value = visual_feature.split('=')
+            slot = slot_value[0].strip()
+            value = slot_value[1].strip()
+            slot_value_pairs[slot] = value
+        non_visual_features = graph['Object ID: ' + str(o)]['non-visual']
+        for non_visual_feature in non_visual_features:
+            slot_value = non_visual_feature.split('=')
+            slot = slot_value[0].strip()
+            value = slot_value[1].strip()
+            slot_value_pairs[slot] = value
+
+        slot_keys = list(slot_value_pairs.keys())
+        ordered_terms = []
+        if 'pattern' in slot_keys:
+            ordered_terms.append(slot_value_pairs['pattern'])
+        if 'color' in slot_keys:
+            ordered_terms.append(slot_value_pairs['color'])
+        if 'material' in slot_keys:
+            ordered_terms.append(slot_value_pairs['material'])
+        ordered_terms.append(slot_value_pairs['type'])
+        if 'brand' in slot_keys:
+            ordered_terms.append('by ' + slot_value_pairs['brand'])
+        if 'customerRating' in slot_keys:
+            rating = slot_value_pairs['customerRating']
+            if float(rating)>= 4.0:
+                ordered_terms.append('with good ratings')
+        if 'customerReview' in slot_keys:
+            rating = slot_value_pairs['customerReview']
+            if float(rating)>= 4.0:
+                ordered_terms.append('with good reviews')
+        ordered_terms.append('priced ' + slot_value_pairs['price'])
+        if 'positioned' in slot_keys:
+            ordered_terms.append(slot_value_pairs['positioned'])
+
+        feature_string += ' '.join(ordered_terms)
+        # if ('positioned', 'pattern') in list(slot_value_pairs.keys()):
+        #     feature_string += '{}: {} {} {} {}'.format(str(o), slot_value_pairs['color'], slot_value_pairs['pattern'], slot_value_pairs['type'], slot_value_pairs['positioned'])
+        # elif 'pattern' in list(slot_value_pairs.keys()):
+        #     feature_string += '{}: {} {} {}'.format(str(o), slot_value_pairs['color'], slot_value_pairs['pattern'], slot_value_pairs['type'])
+        # else:
+        #     feature_string += '{}: {} {}'.format(str(o), slot_value_pairs['color'], slot_value_pairs['type'])
+        feature_strings.append(feature_string)
+    return feature_strings
 
 def represent_visual_objects(object_ids):
     # Stringify visual objects (JSON)
-    """
-    target_attributes = ['pos', 'color', 'type', 'class_name', 'decor_style']
 
-    list_str_objects = []
-    for obj_name, obj in visual_objects.items():
-        s = obj_name + ' :'
-        for target_attribute in target_attributes:
-            if target_attribute in obj:
-                target_value = obj.get(target_attribute)
-                if target_value == '' or target_value == []:
-                    pass
-                else:
-                    s += f' {target_attribute} {str(target_value)}'
-        list_str_objects.append(s)
+    # target_attributes = ['pos', 'color', 'type', 'class_name', 'decor_style']
+    #
+    # list_str_objects = []
+    # for obj_name, obj in visual_objects.items():
+    #     s = obj_name + ' :'
+    #     for target_attribute in target_attributes:
+    #         if target_attribute in obj:
+    #             target_value = obj.get(target_attribute)
+    #             if target_value == '' or target_value == []:
+    #                 pass
+    #             else:
+    #                 s += f' {target_attribute} {str(target_value)}'
+    #     list_str_objects.append(s)
+    #
+    # str_objects = ' '.join(list_str_objects)
 
-    str_objects = ' '.join(list_str_objects)
-    """
     str_objects = ", ".join([str(o) for o in object_ids])
     return f"{START_OF_MULTIMODAL_CONTEXTS} {str_objects} {END_OF_MULTIMODAL_CONTEXTS}"
 

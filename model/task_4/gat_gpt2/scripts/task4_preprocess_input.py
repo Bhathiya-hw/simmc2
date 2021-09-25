@@ -22,6 +22,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--input_path_json", help="input path to the original dialog data"
     )
+    parser.add_argument(
+        "--input_scene_graph", help="input path to the scene graph"
+    )
     parser.add_argument("--output_path_sys_belief", help="output path belief")
     parser.add_argument("--output_path_predict", help="output path for model input")
     parser.add_argument("--output_path_scene", help="output path for model scene input")
@@ -68,7 +71,7 @@ if __name__ == "__main__":
     output_path_special_tokens = args.output_path_special_tokens
     len_context = args.len_context
     use_multimodal_contexts = bool(args.use_multimodal_contexts)
-
+    input_scene_graph = args.input_scene_graph
     # DEBUG:
     print("Belief states: {}".format(args.use_belief_states))
 
@@ -76,11 +79,12 @@ if __name__ == "__main__":
     if args.baseline == 'baseline_1':
         baseline_1.convert_json_to_flattened(
             input_path_json,
+            input_scene_graph,
             output_path_sys_belief,
             output_path_predict,
             output_path_scene,
             output_path_target,
-            output_path_disambiguate,
+            # output_path_disambiguate,
             input_path_special_tokens=input_path_special_tokens,
             output_path_special_tokens=output_path_special_tokens,
             len_context=len_context,

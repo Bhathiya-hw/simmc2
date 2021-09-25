@@ -11,6 +11,7 @@ fi
 # Train split
 python3 -m gat_gpt2.scripts.task4_preprocess_input \
     --input_path_json="${PATH_DATA_DIR}"/simmc2_dials_dstc10_train.json \
+    --input_scene_graph="${PATH_DIR}"/gat_gpt2/data/graph_data/new_scene_graph.json \
     --output_path_sys_belief="${PATH_DIR}"/gat_gpt2/data/t4_simmc2_dials_dstc10_train_sys_belief.txt \
     --output_path_scene="${PATH_DIR}"/gat_gpt2/data/t4_simmc2_dials_dstc10_train_scene.txt \
     --output_path_predict="${PATH_DIR}"/gat_gpt2/data/t4_simmc2_dials_dstc10_train_predict.txt \
@@ -23,6 +24,7 @@ python3 -m gat_gpt2.scripts.task4_preprocess_input \
 # Dev split
 python3 -m gat_gpt2.scripts.task4_preprocess_input \
     --input_path_json="${PATH_DATA_DIR}"/simmc2_dials_dstc10_dev.json \
+    --input_scene_graph="${PATH_DIR}"/gat_gpt2/data/graph_data/new_scene_graph.json \
     --output_path_sys_belief="${PATH_DIR}"/gat_gpt2/data/t4_simmc2_dials_dstc10_dev_sys_belief.txt \
     --output_path_scene="${PATH_DIR}"/gat_gpt2/data/t4_simmc2_dials_dstc10_dev_scene.txt \
     --output_path_predict="${PATH_DIR}"/gat_gpt2/data/t4_simmc2_dials_dstc10_dev_predict.txt \
@@ -35,6 +37,7 @@ python3 -m gat_gpt2.scripts.task4_preprocess_input \
 # Devtest split
 python3 -m gat_gpt2.scripts.task4_preprocess_input \
     --input_path_json="${PATH_DATA_DIR}"/simmc2_dials_dstc10_devtest.json \
+    --input_scene_graph="${PATH_DIR}"/gat_gpt2/data/graph_data/new_scene_graph.json \
     --output_path_sys_belief="${PATH_DIR}"/gat_gpt2/data/t4_simmc2_dials_dstc10_devtest_sys_belief.txt \
     --output_path_scene="${PATH_DIR}"/gat_gpt2/data/t4_simmc2_dials_dstc10_devtest_scene.txt \
     --output_path_predict="${PATH_DIR}"/gat_gpt2/data/t4_simmc2_dials_dstc10_devtest_predict.txt \

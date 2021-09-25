@@ -984,7 +984,7 @@ def main():
         device = torch.device(
             "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
         )
-        # torch.cuda.set_device(0)
+        torch.cuda.set_device(2)
         args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
