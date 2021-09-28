@@ -311,6 +311,7 @@ class Graph2Dial(GPT2PreTrainedModel):
         """
 
         # init values
+        initial_input_ids = input_ids.clone()
         logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
         stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
         # if max_length is not None:
@@ -363,7 +364,7 @@ class Graph2Dial(GPT2PreTrainedModel):
                     break
 
             # prepare model inputs
-            model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
+            model_inputs = self.prepare_inputs_for_generation(input_ids, initial_input_ids, **model_kwargs)
 
             # forward pass to get next token
             outputs = self(
@@ -460,7 +461,7 @@ class Graph2Dial(GPT2PreTrainedModel):
             new_stopping_criteria.append(MaxLengthCriteria(max_length=max_length))
         return new_stopping_criteria
 
-    def prepare_inputs_for_generation(self, input_ids, past=None, **kwargs):
+    def prepare_inputs_for_generation(self, input_ids,initial_input_ids, past=None, **kwargs):
         token_type_ids = kwargs.get("token_type_ids", None)
         # only last token for inputs_ids if past is defined in kwargs
         # if past:
@@ -489,5 +490,5 @@ class Graph2Dial(GPT2PreTrainedModel):
             "attention_mask": attention_mask,
             "token_type_ids": token_type_ids,
             "sg_input": sg_input,
-            "predict_input_ids": input_ids
+            "predict_input_ids": initial_input_ids
         }
