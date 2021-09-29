@@ -318,7 +318,7 @@ class MiniDictDataset2(Dataset):
             # acts.append([tokenizer.convert_tokens_to_ids(tk.strip()) for tk in v['current_act'].split(' ')])
             # slot_values += [tokenizer.encode(v['slot_values'],add_special_tokens=True, max_length=block_size)]
             # request_slots.append([tokenizer.convert_tokens_to_ids(tk.strip()) for tk in v['requested_slots'].split(' ')])
-            unique_refs =  [scene_data_dict[scene_key].local2unique[obj] for obj in v['ref_objects'].split(' ') if obj in list(scene_data_dict[scene_key].local2unique.keys())] + ['>']
+            unique_refs =  [scene_data_dict[scene_key].local2unique[obj] for obj in v['ref_objects'].split(' ') if obj in list(scene_data_dict[scene_key].local2unique.keys())]ga
             # answers.append([tokenizer.convert_tokens_to_ids(tk.strip()) for tk in v['ref_objects'].split(' ')] +[tokenizer.convert_tokens_to_ids(tk.strip()) for tk in unique_refs]  )
             answers.append(v['ref_objects'] + "< " + ",".join(unique_refs) + " >")
 

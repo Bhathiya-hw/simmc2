@@ -151,7 +151,7 @@ class Graph2Dial(GPT2PreTrainedModel):
         conv_input_embed = self.transformer.transformer.wte(input_ids)
         # inputs_embeds = torch.cat((x_executed.unsqueeze(0), conv_input_embed), dim=1) #fine_tune -1
         inputs_embeds = torch.cat((x_encoded.unsqueeze(1), conv_input_embed), dim=0)
-        dial_out = self.transformer(inputs_embeds=inputs_embeds.transpose(1,0), labels=labels.T, return_dict=True,output_attentions=output_attentions, output_hidden_states=True)
+        dial_out = self.transformer(inputs_embeds=inputs_embeds.transpose(1,0), labels=None, return_dict=True,output_attentions=output_attentions, output_hidden_states=True)
         # dial_out = self.transformer(inputs_embeds=inputs_embeds, return_dict=True, output_attentions=output_attentions, output_hidden_states=True)
 
         # final_layer = dial_out['hidden_states'][12]
@@ -483,7 +483,7 @@ class Graph2Dial(GPT2PreTrainedModel):
         else:
             position_ids = None
         return {
-            "input_ids": input_ids,
+            "input_ids": input_ids.T,
             "past_key_values": past,
             "use_cache": kwargs.get("use_cache"),
             "position_ids": position_ids,

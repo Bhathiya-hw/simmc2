@@ -204,6 +204,36 @@ def prepare_graph2dial_input_task23(args, _, tokenizer, prompt_dict, prompt):
     context += tokenizer.encode('=>', add_special_tokens=True, max_length=args.block_size)
     return torch.tensor([context], dtype=torch.long), torch_geometric.data.Batch.from_data_list([datum])
 
+def prepare_graph2dial_input_task23_new(args, _, tokenizer, prompt_dict, prompt):
+    datum = args.sg_feature.convert_one_gqa_scene_graph2(prompt_dict['scene'] + "_scene.json", tokenizer)
+    context = ''
+    if prompt_dict['turn_idx'] > 1:
+        prev_turn_key = str(prompt_dict['dialog_idx']) + "_" + str(prompt_dict['turn_idx'] - 1)
+        prev_dict = prompt[prev_turn_key]
+        prev_datum = datum if prev_dict['scene'] == prompt_dict['scene'] else args.sg_feature.convert_one_gqa_scene_graph2(prev_dict['scene'] + "_scene.json", tokenizer)
+        context += prev_dict['prev_asst_utterance'] #tokenizer.encode(prev_dict['prev_asst_utterance'], add_special_tokens=True, max_length=args.block_size)
+        if 'visual_objects' in prev_dict.keys():
+            unique_vis = [prev_datum.local2unique[obj] for obj in prev_dict['visual_objects'].split(' ') if obj in list(prev_datum.local2unique.keys())]
+            context +=  prev_dict['visual_objects']
+            # context += [extended_tokenizer_encode(tokenizer=tokenizer, token=tk.strip(), block_size=args.block_size) for tk in
+            #             prev_dict['visual_objects'].split(' ')]  # tokenizer.convert_tokens_to_ids(v['visual_objects'],add_special_tokens=True, max_length=block_size)
+            context += "[ " + ",".join(unique_vis) + " ]"
+            # context += [extended_tokenizer_encode(tokenizer=tokenizer, token=tk.strip(), block_size=args.block_size) for tk in unique_vis]
+        context += prev_dict['user_utterance'] #tokenizer.encode(prev_dict['user_utterance'], add_special_tokens=True, max_length=args.block_size)
+
+    if prompt_dict['turn_idx'] > 0:
+        context += prompt_dict['prev_asst_utterance']#tokenizer.encode(prompt_dict['prev_asst_utterance'], add_special_tokens=True, max_length=args.block_size)
+        if 'visual_objects' in prompt_dict.keys():
+            unique_vis = [datum.local2unique[obj] for obj in prompt_dict['visual_objects'].split(' ') if obj in list(datum.local2unique.keys())]
+            context += prompt_dict['visual_objects']
+            context += "[ " + ",".join(unique_vis) + " ]"
+            # context += [extended_tokenizer_encode(tokenizer=tokenizer, token=tk.strip(), block_size=args.block_size) for tk in
+            #             prompt_dict['visual_objects'].split(' ')]  # tokenizer.convert_tokens_to_ids(v['visual_objects'],add_special_tokens=True, max_length=block_size)
+            # context += [extended_tokenizer_encode(tokenizer=tokenizer, token=tk.strip(), block_size=args.block_size) for tk in unique_vis]
+    context += prompt_dict['user_utterance']#tokenizer.encode(prompt_dict['user_utterance'], add_special_tokens=True, max_length=args.block_size)
+    context += ' => ' #tokenizer.encode('=>', add_special_tokens=True, max_length=args.block_size)
+    context_encoded = tokenizer.batch_encode_plus([context], add_special_tokens=True, max_length=args.block_size)["input_ids"]
+    return torch.tensor(context_encoded, dtype=torch.long), torch_geometric.data.Batch.from_data_list([datum])
 
 def extended_tokenizer_encode(tokenizer, token, block_size):
     converted_id = tokenizer.convert_tokens_to_ids(token)
@@ -215,7 +245,7 @@ PREPROCESSING_FUNCTIONS = {
     "xlm": prepare_xlm_input,
     "xlnet": prepare_xlnet_input,
     "transfo-xl": prepare_transfoxl_input,
-    "graph2dial": prepare_graph2dial_input_task23,
+    "graph2dial": prepare_graph2dial_input_task23_new,
 }
 
 
@@ -353,7 +383,7 @@ command line""",
     args.device = torch.device(
         "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
     )
-    torch.cuda.set_device(2)
+    # torch.cuda.set_device(2)
     args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
 
     set_seed(args)
@@ -387,7 +417,7 @@ command line""",
     if args.prompts_from_file:
         with open(args.prompts_from_file) as handle:
             prompts = json.load(open(args.prompts_from_file))#handle.readlines()
-            prompts = {k: prompts[k] for k in list(prompts)[:4]}
+            # prompts = {k: prompts[k] for k in list(prompts)[:4]}
     if args.scene_file:
         with open(args.scene_file) as scene:
             scene_keys = scene.readlines()
@@ -405,8 +435,9 @@ command line""",
                 break  # break while True loop
 
         n_prompts = len(prompts)
+        i = 0
         for prompt_key, prompt_dict in prompts.items():
-
+            i += 1
             # Strip any trailing \n if provided
             # prompt_text = prompt_text.strip("\n")
 
@@ -431,7 +462,7 @@ command line""",
                     logits_processor = logits_processor,
                     stopping_criteria= None,
                     logits_warper = logits_warper,
-                    max_length = encoded_prompt.shape[1]+ encoded_sg_input.x.shape[1] + 100,
+                    max_length = encoded_prompt.shape[1]+ 50,
                     # pad_token_id = 50256,
                     # eos_token_id = 50256,
                     output_attentions = False,
@@ -453,7 +484,7 @@ command line""",
                 print(
                     "=== GENERATED SEQUENCE {sequence_idx}, {promt_idx}/{n_prompts} ===".format(
                         sequence_idx=generated_sequence_idx + 1,
-                        promt_idx=prompt_key,
+                        promt_idx=i,
                         n_prompts=n_prompts,
                     )
                 )
