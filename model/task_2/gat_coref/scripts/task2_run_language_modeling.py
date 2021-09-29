@@ -266,10 +266,84 @@ class MiniDictDataset(Dataset):
         #     return torch.tensor(self.examples[i], dtype=torch.long), torch.tensor(self.predict_lines[i], dtype=torch.long), self.scenes[i], torch.tensor(self.belief_tokens[i], dtype=torch.long)
         #     return torch.tensor(self.examples[i], dtype=torch.long), torch.tensor(self.predict_lines[i], dtype=torch.long), self.scenes[i], torch.tensor([[0]])
 
+class MiniDictDataset2(Dataset):
+    def __init__(self, tokenizer: PreTrainedTokenizer, args, file_path: str, block_size=512):
+        print(file_path)
+        assert os.path.isfile(file_path)
+
+        scene_data_dict = {}
+        with open(file_path, "r", encoding="utf-8") as f_read:
+                data_dict = json.load(f_read)
+        sg_data = []
+        acts = []
+        text_context = {}
+        request_slots = []
+        slot_values = []
+        answers = []
+        contexts = []
+        for k,v in data_dict.items():
+            context = ''
+            prev_context = ''
+            scene_key = v['scene']
+            if  scene_key not in [str(k) for k in scene_data_dict.keys()]:
+                datum = args.sg_feature.convert_one_gqa_scene_graph2(scene_key + '_scene.json', tokenizer)
+                sg_data.append(datum)
+                scene_data_dict[scene_key] = datum
+            else:
+                sg_data.append(scene_data_dict[scene_key].clone())
+
+            if v['turn_idx']> 0:
+                prev_turn_key = str(v['dialog_idx'])+"_"+ str(v['turn_idx']-1)
+                prev_context += text_context[prev_turn_key]
+                context += v['prev_asst_utterance']#tokenizer.encode(v['prev_asst_utterance'], add_special_tokens=True, max_length=block_size)
+
+            if 'visual_objects' in v.keys():
+                unique_vis = [scene_data_dict[scene_key].local2unique[obj]   for obj in  v['visual_objects'].split(' ') if obj in list(scene_data_dict[scene_key].local2unique.keys())  ]
+                context += v['visual_objects']
+                context +=  "[ " + ",".join(unique_vis) + " ]"
+                # context += [self.extended_tokenizer_encode(tokenizer=tokenizer, token =tk.strip(), block_size=block_size) for tk in v['visual_objects'].split(' ')]#tokenizer.convert_tokens_to_ids(v['visual_objects'],add_special_tokens=True, max_length=block_size)
+                # context += [self.extended_tokenizer_encode(tokenizer=tokenizer, token =tk.strip(), block_size=block_size) for tk in unique_vis]
+            context  +=  v['user_utterance'] #tokenizer.encode(v['user_utterance'],add_special_tokens=True, max_length=block_size)
+            # context += tokenizer.encode('=>',add_special_tokens=True, max_length=block_size)
+
+            turn_key = str(v['dialog_idx'])+'_'+str(v['turn_idx'])
+            text_context[turn_key] = context
+            combined_context = prev_context + context + ' => ' #tokenizer.encode('=>',add_special_tokens=True, max_length=block_size)
+            contexts.append(combined_context)
+
+            acts.append(v['current_act'])
+            slot_values.append(v['slot_values'])
+            request_slots.append(v['requested_slots'])
+            # answers.append(v['ref_objects'])
+            # acts.append([tokenizer.convert_tokens_to_ids(tk.strip()) for tk in v['current_act'].split(' ')])
+            # slot_values += [tokenizer.encode(v['slot_values'],add_special_tokens=True, max_length=block_size)]
+            # request_slots.append([tokenizer.convert_tokens_to_ids(tk.strip()) for tk in v['requested_slots'].split(' ')])
+            unique_refs =  [scene_data_dict[scene_key].local2unique[obj] for obj in v['ref_objects'].split(' ') if obj in list(scene_data_dict[scene_key].local2unique.keys())] + ['>']
+            # answers.append([tokenizer.convert_tokens_to_ids(tk.strip()) for tk in v['ref_objects'].split(' ')] +[tokenizer.convert_tokens_to_ids(tk.strip()) for tk in unique_refs]  )
+            answers.append(v['ref_objects'] + "< " + ",".join(unique_refs)) + " >"
+
+        self.context = tokenizer.batch_encode_plus(contexts, add_special_tokens=True, max_length=block_size)["input_ids"]
+        self.acts = tokenizer.batch_encode_plus(acts, add_special_tokens=True, max_length=block_size)["input_ids"]
+        self.slot_values = tokenizer.batch_encode_plus(slot_values, add_special_tokens=True, max_length=block_size)["input_ids"]
+        self.request_slots = tokenizer.batch_encode_plus(request_slots, add_special_tokens=True, max_length=block_size)["input_ids"]
+        self.scene_data = sg_data
+        self.answers = tokenizer.batch_encode_plus(answers, add_special_tokens=True, max_length=block_size)["input_ids"]
+
+
+    def extended_tokenizer_encode(self,tokenizer,token,block_size):
+        converted_id = tokenizer.convert_tokens_to_ids(token)
+        return converted_id if converted_id != 50256 else tokenizer.encode(token,add_special_tokens=True, max_length=block_size)
+    def __len__(self):
+        return len(self.context)
+
+    def __getitem__(self, i):
+        return torch.tensor(self.context[i], dtype=torch.long), torch.tensor(self.acts[i], dtype=torch.long), \
+               torch.tensor(self.slot_values[i], dtype=torch.long),torch.tensor(self.request_slots[i], dtype=torch.long), \
+               self.scene_data[i],torch.tensor(self.answers[i], dtype=torch.long)
 
 def load_and_cache_for_task2(args, tokenizer, evaluate=False):
     file_path = args.eval_data_file if evaluate else args.train_data_file
-    dataset = MiniDictDataset(args= args, tokenizer=tokenizer, file_path =file_path, block_size = args.block_size)
+    dataset = MiniDictDataset2(args= args, tokenizer=tokenizer, file_path =file_path, block_size = args.block_size)
 
        # Unknown issues have been reported around not being able to handle incomplete batches (e.g. w/ older CUDA 9.2)
        # Below is a workaround in case you encounter this issue.
@@ -1086,7 +1160,7 @@ def main():
         device = torch.device(
             "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
         )
-        torch.cuda.set_device(2)
+        # torch.cuda.set_device(2)
         args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)

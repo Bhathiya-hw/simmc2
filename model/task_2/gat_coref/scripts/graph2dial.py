@@ -149,10 +149,10 @@ class Graph2Dial(GPT2PreTrainedModel):
         # da_loss = self.direct_ans_criterion(direct_logits.squeeze(1), target_classification)
 
         conv_input_embed = self.transformer.transformer.wte(input_ids)
-        inputs_embeds = torch.cat((x_executed.unsqueeze(0), conv_input_embed), dim=1) #fine_tune -1
-        # inputs_embeds = torch.cat((x_encoded.unsqueeze(1), conv_input_embed), dim=0)
-        # dial_out = self.transformer(inputs_embeds=inputs_embeds.transpose(1,0), labels=labels.T, return_dict=True,output_attentions=output_attentions, output_hidden_states=True)
-        dial_out = self.transformer(inputs_embeds=inputs_embeds, return_dict=True, output_attentions=output_attentions, output_hidden_states=True)
+        # inputs_embeds = torch.cat((x_executed.unsqueeze(0), conv_input_embed), dim=1) #fine_tune -1
+        inputs_embeds = torch.cat((x_encoded.unsqueeze(1), conv_input_embed), dim=0)
+        dial_out = self.transformer(inputs_embeds=inputs_embeds.transpose(1,0), labels=labels.T, return_dict=True,output_attentions=output_attentions, output_hidden_states=True)
+        # dial_out = self.transformer(inputs_embeds=inputs_embeds, return_dict=True, output_attentions=output_attentions, output_hidden_states=True)
 
         # final_layer = dial_out['hidden_states'][12]
         # prediction_relevance = torch.mean(torch.nn.functional.softmax(torch.matmul(final_layer.squeeze(0), x_executed.transpose(1, 0)), dim=1),dim=0)
