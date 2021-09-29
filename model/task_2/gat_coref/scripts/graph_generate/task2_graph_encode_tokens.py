@@ -49,7 +49,7 @@ if __name__ == "__main__":
              relations = object_graph['relation']
 
              unique_id_attr = str(object_graph['unique_id'])
-             attributes.add(unique_id_attr)
+             SPECIAL_ATTRIBUTE_TOKENS.append(unique_id_attr)
 
              object_attr = visual + non_visual + [unique_id_attr]
              object2attributes[object_index] = object_attr
