@@ -24,11 +24,11 @@ if __name__ == "__main__":
 
     scene_graph_load= json.load(open(input_graph_json))
 
-    SPECIAL_ATTRIBUTE_TOKENS = ['price = unknown', 'sleeveLength = unknown', 'color = unknown', 'type = unknown', 'size = unknown',
-                               'brand = unknown', 'customerReview = unknown', 'pattern = unknown', 'materials = unknown', 'DISAMBIGUATE = YES', 'DISAMBIGUATE = NO']
+    # SPECIAL_ATTRIBUTE_TOKENS = ['price = unknown', 'sleeveLength = unknown', 'color = unknown', 'type = unknown', 'size = unknown',
+    #                            'brand = unknown', 'customerReview = unknown', 'pattern = unknown', 'materials = unknown', 'DISAMBIGUATE = YES', 'DISAMBIGUATE = NO']
 
-    SPECIAL_EDGE_TOKENS = ['price', 'sleeveLength', 'color', 'type', 'material', 'brand', 'pattern', 'positioned', 'assetType', 'DISAMBIGUATE', 'TO_ROOT', 'FROM_ROOT']
-
+    SPECIAL_EDGE_TOKENS = ['price', 'sleeveLength', 'color', 'type', 'materials', 'brand', 'pattern', 'positioned', 'assetType', 'availableSizes', 'customerRating', 'customerReview']
+    SPECIAL_ATTRIBUTE_TOKENS  = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
     # DISAMBIGUATE_NODE_TOKEN = ['DISAMBIGUATE = YES', 'DISAMBIGUATE = NO' ]
     # MENTIONED_OBJECTS_TOKENS = ['MENTIONED = YES', 'MENTIONED = NO']
 
@@ -60,8 +60,8 @@ if __name__ == "__main__":
              for non_vis_rel in non_visual:
                 attributes.add(non_vis_rel)
 
-             for attribute_token in SPECIAL_ATTRIBUTE_TOKENS:
-                attributes.add(attribute_token)
+             # for attribute_token in SPECIAL_ATTRIBUTE_TOKENS:
+             #    attributes.add(attribute_token)
 
              for edge_token in SPECIAL_EDGE_TOKENS:
                 predicates.add(edge_token)
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
 
     with open(output_path_attributes, 'w+') as f:
-        json.dump(list(attributes),f)
+        json.dump(SPECIAL_ATTRIBUTE_TOKENS,f)
 
     with open(output_path_predicates, 'w+') as f:
         json.dump(list(predicates),f)

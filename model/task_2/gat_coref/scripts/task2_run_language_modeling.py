@@ -320,7 +320,7 @@ class MiniDictDataset2(Dataset):
             # request_slots.append([tokenizer.convert_tokens_to_ids(tk.strip()) for tk in v['requested_slots'].split(' ')])
             unique_refs =  [scene_data_dict[scene_key].local2unique[obj] for obj in v['ref_objects'].split(' ') if obj in list(scene_data_dict[scene_key].local2unique.keys())] + ['>']
             # answers.append([tokenizer.convert_tokens_to_ids(tk.strip()) for tk in v['ref_objects'].split(' ')] +[tokenizer.convert_tokens_to_ids(tk.strip()) for tk in unique_refs]  )
-            answers.append(v['ref_objects'] + "< " + ",".join(unique_refs)) + " >"
+            answers.append(v['ref_objects'] + "< " + ",".join(unique_refs) + " >")
 
         self.context = tokenizer.batch_encode_plus(contexts, add_special_tokens=True, max_length=block_size)["input_ids"]
         self.acts = tokenizer.batch_encode_plus(acts, add_special_tokens=True, max_length=block_size)["input_ids"]
