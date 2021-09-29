@@ -60,6 +60,14 @@ if __name__ == "__main__":
         "--output_path_retrieval", help="output path to retrieval candidates",
     )
 
+    parser.add_argument(
+        "--input_path_sg", help="input path to the scene graph"
+    )
+
+    parser.add_argument(
+        "--output_path_scene", help="scene urls for each turn"
+    )
+
     args = parser.parse_args()
     input_path_json = args.input_path_json
     output_path_predict = args.output_path_predict
@@ -71,6 +79,8 @@ if __name__ == "__main__":
     # Retrieval encoding arguments.
     input_path_retrieval = args.input_path_retrieval
     output_path_retrieval = args.output_path_retrieval
+    input_path_scene_graph = args.input_path_sg
+    output_path_scene = args.output_path_scene
 
     # DEBUG:
     print("Belief states: {}".format(args.use_belief_states))
@@ -87,4 +97,6 @@ if __name__ == "__main__":
         use_belief_states=args.use_belief_states,
         input_path_retrieval=input_path_retrieval,
         output_path_retrieval=output_path_retrieval,
+        input_path_scene_graph= input_path_scene_graph,
+        output_path_scene = output_path_scene
     )

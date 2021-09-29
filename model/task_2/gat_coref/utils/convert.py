@@ -25,6 +25,8 @@ FIELDNAME_SYSTEM_STATE = "system_transcript_annotated"
 # Templates for GPT-2 formatting
 START_OF_MULTIMODAL_CONTEXTS = "<SOM>"
 END_OF_MULTIMODAL_CONTEXTS = "<EOM>"
+START_OF_CATALOG_CONTEXTS = "<SCAT>"
+END_OF_CATALOG_CONTEXTS = "<ECAT>"
 START_BELIEF_STATE = "=> Belief State :"
 START_OF_RESPONSE = "<SOR>"
 END_OF_BELIEF = "<EOB>"
@@ -52,6 +54,8 @@ def convert_json_to_flattened(
     output_path_retrieval=None,
     input_path_special_tokens="",
     output_path_special_tokens="",
+    input_path_scene_graph = "",
+    output_path_scene = ""
 ):
     """
     Input: JSON representation of the dialogs
@@ -75,6 +79,12 @@ def convert_json_to_flattened(
     else:
         format_retrieval_options = False
 
+    append_unique_ids = False
+    if input_path_scene_graph is not None and output_path_scene is not None:
+        with open(input_path_scene_graph, 'r') as file_id:
+            scene_graph =  json.load(file_id)
+            append_unique_ids = True
+
     predicts = []
     targets = []
     if input_path_special_tokens != "":
@@ -97,7 +107,7 @@ def convert_json_to_flattened(
         # If a new output path for special tokens is given,
         # we track new OOVs
         oov = set()
-
+    scene_list = []
     for _, dialog in enumerate(data):
 
         domain = dialog["domain"]
@@ -105,12 +115,15 @@ def convert_json_to_flattened(
         prev_asst_uttr = None
         prev_turn = None
         lst_context = []
-
         for turn_id, turn in enumerate(dialog[FIELDNAME_DIALOG]):
             user_uttr = turn[FIELDNAME_USER_UTTR].replace("\n", " ").strip()
             user_belief = turn[FIELDNAME_BELIEF_STATE]
             asst_uttr = turn[FIELDNAME_ASST_UTTR].replace("\n", " ").strip()
 
+            if append_unique_ids:
+                relvant_turn = max([int(i) for i in dialog['scene_ids'].keys() if int(i) <= turn['turn_idx']])
+                scene = dialog['scene_ids'][str(relvant_turn)]
+                scene_list.append(scene + "_scene.json")
             # Format main input context
             context = ""
             if prev_asst_uttr:
@@ -120,7 +133,10 @@ def convert_json_to_flattened(
                     visual_objects = prev_turn[FIELDNAME_SYSTEM_STATE][
                         "act_attributes"
                     ]["objects"]
-                    context += represent_visual_objects(visual_objects) + " "
+                    if append_unique_ids:
+                        context += represent_visual_objects(visual_objects, scene_graph[scene + "_scene.json"])
+                    else:
+                        context += represent_visual_objects(visual_objects, None)
 
             context += f"User : {user_uttr}"
             prev_asst_uttr = asst_uttr
@@ -141,25 +157,50 @@ def convert_json_to_flattened(
             if use_belief_states:
                 belief_state = []
                 # for bs_per_frame in user_belief:
-                str_belief_state_per_frame = (
-                    "{act} [ {slot_values} ] ({request_slots}) < {objects} >".format(
-                        act=user_belief["act"].strip(),
-                        slot_values=", ".join(
-                            [
-                                f"{k.strip()} = {str(v).strip()}"
-                                for k, v in user_belief["act_attributes"][
-                                    "slot_values"
-                                ].items()
-                            ]
-                        ),
-                        request_slots=", ".join(
-                            user_belief["act_attributes"]["request_slots"]
-                        ),
-                        objects=", ".join(
-                            [str(o) for o in user_belief["act_attributes"]["objects"]]
-                        ),
+                if append_unique_ids:
+                    str_belief_state_per_frame = (
+                        "{act} [ {slot_values} ] ({request_slots}) < {objects} > | {uniques} |".format(
+                            act=user_belief["act"].strip(),
+                            slot_values=", ".join(
+                                [
+                                    f"{k.strip()} = {str(v).strip()}"
+                                    for k, v in user_belief["act_attributes"][
+                                        "slot_values"
+                                    ].items()
+                                ]
+                            ),
+                            request_slots=", ".join(
+                                user_belief["act_attributes"]["request_slots"]
+                            ),
+                            objects=", ".join(
+                                [str(o) for o in user_belief["act_attributes"]["objects"]]
+                            ),
+
+                            uniques=", ".join(
+                                [scene_graph[scene + '_scene.json']["O" + str(o)]['unique_id'] for o in user_belief["act_attributes"]["objects"] if "O" + str(o) in list(scene_graph[scene + '_scene.json'].keys())]
+                             ),
+                        )
                     )
-                )
+                else:
+                    str_belief_state_per_frame = (
+                        "{act} [ {slot_values} ] ({request_slots}) < {objects} >".format(
+                            act=user_belief["act"].strip(),
+                            slot_values=", ".join(
+                                [
+                                    f"{k.strip()} = {str(v).strip()}"
+                                    for k, v in user_belief["act_attributes"][
+                                        "slot_values"
+                                    ].items()
+                                ]
+                            ),
+                            request_slots=", ".join(
+                                user_belief["act_attributes"]["request_slots"]
+                            ),
+                            objects=", ".join(
+                                [str(o) for o in user_belief["act_attributes"]["objects"]]
+                            ),
+                        )
+                    )
                 belief_state.append(str_belief_state_per_frame)
 
                 # Track OOVs
@@ -240,6 +281,11 @@ def convert_json_to_flattened(
         Y = "\n".join(targets)
         f_target.write(Y)
 
+    if append_unique_ids:
+        with open(output_path_scene, "w") as f_scene:
+            S = "\n".join(scene_list)
+            f_scene.write(S)
+
     # Write retrieval candidates if necessary.
     if format_retrieval_options:
         # Create a directory if it does not exist
@@ -261,7 +307,7 @@ def convert_json_to_flattened(
             json.dump(special_tokens, f_special_tokens)
 
 
-def represent_visual_objects(object_ids):
+def represent_visual_objects(object_ids, scene=None):
     # Stringify visual objects (JSON)
     """
     target_attributes = ['pos', 'color', 'type', 'class_name', 'decor_style']
@@ -281,8 +327,11 @@ def represent_visual_objects(object_ids):
     str_objects = ' '.join(list_str_objects)
     """
     str_objects = ", ".join([str(o) for o in object_ids])
-    return f"{START_OF_MULTIMODAL_CONTEXTS} {str_objects} {END_OF_MULTIMODAL_CONTEXTS}"
-
+    if scene is not None:
+        unique_ids = ','.join([scene["O"+str(o)]['unique_id'] for o in object_ids if "O"+str(o) in list(scene.keys())])
+        return f"{START_OF_MULTIMODAL_CONTEXTS} {str_objects} {END_OF_MULTIMODAL_CONTEXTS} {START_OF_CATALOG_CONTEXTS} {unique_ids} {END_OF_CATALOG_CONTEXTS}"
+    else:
+        return f"{START_OF_MULTIMODAL_CONTEXTS} {str_objects} {END_OF_MULTIMODAL_CONTEXTS}"
 
 def parse_flattened_results_from_file(path):
     results = []

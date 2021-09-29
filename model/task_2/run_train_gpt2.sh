@@ -8,21 +8,33 @@ else
     echo $PATH_DIR
 fi
 
+--output_dir
+/home/bhash/GAT2GPT/simmc2/model/task_2/gat_coref/save/task23/taskDC_mock
+--model_type
+gpt2
+--model_name_or_path
+gpt2
+--line_by_line
+--add_special_tokens
+/home/bhash/GAT2GPT/simmc2/model//task_2/gat_coref/data/dst_coref/simmc2_special_tokens.json
+
+
+
+
 # Train (multi-modal)
-python3 -m gat_coref.scripts.task2_run_language_modeling \
-  --output_dir="${PATH_DIR}"/gat_coref/save/ask2_b1_cr_att3  \
+python3 -m gat_coref.scripts.run_language_modeling \
+  --output_dir="${PATH_DIR}"/gat_coref/save/dc_g4  \
   --model_type=gpt2 \
   --model_name_or_path=gpt2 \
   --line_by_line \
-  --add_special_tokens="${PATH_DIR}"/gat_coref/data/t2_simmc2_special_tokens.json \
+  --add_special_tokens="${PATH_DIR}"/gat_coref/data/dst_coref/simmc2_special_tokens.json \
   --do_train  \
-  --train_data_file="${PATH_DIR}"/gat_coref/data/t2_simmc2_dials_dstc10_train_target.txt \
-  --predict_train_data_file="${PATH_DIR}"/gat_coref/data/t2_simmc2_dials_dstc10_dev_predict.txt \
-  --scene_train_data_file="${PATH_DIR}"/gat_coref/data/t2_simmc2_dials_dstc10_train_scene.txt  \
-  --belief_train_data_file="${PATH_DIR}"/gat_coref/data/t2_simmc2_dials_dstc10_train_sys_belief.txt  \
-  --graph_json_file="${PATH_DIR}"/gat_coref/data/graph_data/t2_scene_graph.json \
+  --train_data_file="${PATH_DIR}"/gat_coref/data/dst_coref/simmc2_dials_dstc10_dev_target.txt \
+  --predict_train_data_file="${PATH_DIR}"/gat_coref/data/dst_coref/simmc2_dials_dstc10_dev_predict.txt \
+  --scene_train_data_file="${PATH_DIR}"/gat_coref/data/dst_coref/simmc2_dials_dstc10_dev_scene.txt \
+  --graph_json_file="${PATH_DIR}"/gat_coref/data/dst_coref/graph_data/scene_graph.json \
   --do_eval \
-  --eval_data_file="${PATH_DIR}"/gat_coref/data/t2_simmc2_dials_dstc10_devtest_target.txt  \
+  --eval_data_file="${PATH_DIR}"/gat_coref/data/dst_coref/simmc2_dials_dstc10_dev_target.txt  \
   --num_train_epochs=2  \
   --overwrite_output_dir  \
   --per_gpu_train_batch_size=1  \
