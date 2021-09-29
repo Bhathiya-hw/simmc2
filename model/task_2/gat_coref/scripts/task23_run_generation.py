@@ -383,7 +383,7 @@ command line""",
     args.device = torch.device(
         "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
     )
-    # torch.cuda.set_device(2)
+    torch.cuda.set_device(2)
     args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
 
     set_seed(args)
@@ -462,7 +462,7 @@ command line""",
                     logits_processor = logits_processor,
                     stopping_criteria= None,
                     logits_warper = logits_warper,
-                    max_length = encoded_prompt.shape[1]+ 50,
+                    max_length = encoded_prompt.shape[1] + 70,
                     # pad_token_id = 50256,
                     # eos_token_id = 50256,
                     output_attentions = False,
