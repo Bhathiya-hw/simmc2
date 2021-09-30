@@ -159,12 +159,8 @@ def prepare_transfoxl_input(args, _, tokenizer, prompt_text):
     return prompt_text
 tmp_text_list = []
 
-def prepare_graph2dial_input(args,_,tokenizer, prompt_text,scene_key, belief_text):
-        sg_datum = args.sg_feature.convert_one_gqa_scene_graph(scene_key.strip() + "_scene.json", tokenizer)
-        belief_encoded = tokenizer.convert_tokens_to_ids(belief_text.split(","))
-        belief_length = 2
-        belief_encoded_processed =  belief_encoded + [0] * (belief_length - len(belief_encoded))
-
+def prepare_graph2dial_input(args,_,tokenizer, prompt_text,scene_key):
+        sg_datum = args.sg_feature.convert_one_gqa_scene_graph(scene_key.strip(), tokenizer)
         encoded_prompt = tokenizer.encode(
             prompt_text,
             add_special_tokens=True,
@@ -173,8 +169,7 @@ def prepare_graph2dial_input(args,_,tokenizer, prompt_text,scene_key, belief_tex
         )
 
         sg_datum_processed = torch_geometric.data.Batch.from_data_list([sg_datum])
-        encoded_belief_input = torch.tensor([belief_encoded_processed])
-        return encoded_prompt,sg_datum_processed,encoded_belief_input
+        return encoded_prompt,sg_datum_processed
 
 PREPROCESSING_FUNCTIONS = {
     "ctrl": prepare_ctrl_input,
@@ -319,7 +314,8 @@ command line""",
     args.device = torch.device(
         "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
     )
-    args.n_gpu = 0 if args.no_cuda else torch.cuda.device_count()
+    torch.cuda.set_device(3)
+    args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
 
     set_seed(args)
 
@@ -376,8 +372,8 @@ command line""",
             requires_preprocessing = args.model_type in PREPROCESSING_FUNCTIONS.keys()
             if requires_preprocessing:
                 prepare_input = PREPROCESSING_FUNCTIONS.get(args.model_type)
-                encoded_prompt, encoded_sg_input, encoded_belief_input = prepare_input(
-                    args, model, tokenizer, prompt_text,scene_keys[i],beliefs[i]
+                encoded_prompt, encoded_sg_input = prepare_input(
+                    args, model, tokenizer, prompt_text,scene_keys[i]
                 )
                 # encoded_prompt = tokenizer.encode(
                 #     preprocessed_prompt_text,
@@ -391,7 +387,7 @@ command line""",
                 )
             encoded_prompt = encoded_prompt.to(args.device)
             encoded_sg_input =encoded_sg_input.to(args.device)
-            encoded_belief_input = encoded_belief_input.to(args.device)
+            # encoded_belief_input = encoded_belief_input.to(args.device)
 
             # model.config.is_encoder_decoder = True
             # output_sequences = model.generate(
@@ -419,15 +415,14 @@ command line""",
                     logits_processor = logits_processor,
                     stopping_criteria= None,
                     logits_warper = logits_warper,
-                    max_length = encoded_prompt.shape[1]+ encoded_sg_input.x.shape[1] + 80,
+                    max_length = encoded_prompt.shape[1] + 100,
                     # pad_token_id = 50256,
                     # eos_token_id = 50256,
                     output_attentions = False,
                     output_hidden_states = False,
                     output_scores = False,
                     return_dict_in_generate = False,
-                    sg_input = encoded_sg_input,
-                    belief_input= encoded_belief_input)
+                    sg_input = encoded_sg_input)
 
             # Remove the batch dimension when returning multiple sequences
             if len(output_sequences.shape) > 2:
