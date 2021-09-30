@@ -14,6 +14,7 @@ root directory of this source tree.
 import json
 import re
 import os
+import gat_coref.scripts.graph_representation.Constants as Constants
 
 # DSTC style dataset fieldnames
 FIELDNAME_DIALOG = "dialogue"
@@ -27,6 +28,8 @@ START_OF_MULTIMODAL_CONTEXTS = "<SOM>"
 END_OF_MULTIMODAL_CONTEXTS = "<EOM>"
 START_OF_CATALOG_CONTEXTS = "<SCAT>"
 END_OF_CATALOG_CONTEXTS = "<ECAT>"
+START_OF_PRED_CATALOG = "<SPCT>"
+END_OF_PRED_CATALOG = "<EPCT>"
 START_BELIEF_STATE = "=> Belief State :"
 START_OF_RESPONSE = "<SOR>"
 END_OF_BELIEF = "<EOB>"
@@ -101,6 +104,9 @@ def convert_json_to_flattened(
             additional_special_tokens.extend(
                 [START_OF_MULTIMODAL_CONTEXTS, END_OF_MULTIMODAL_CONTEXTS]
             )
+        if append_unique_ids:
+            additional_special_tokens.extend(Constants.OBJECTS_INV)
+            additional_special_tokens.extend(Constants.ATTRIBUTES_INV)
         special_tokens["additional_special_tokens"] = additional_special_tokens
 
     if output_path_special_tokens != "":
@@ -159,7 +165,7 @@ def convert_json_to_flattened(
                 # for bs_per_frame in user_belief:
                 if append_unique_ids:
                     str_belief_state_per_frame = (
-                        "{act} [ {slot_values} ] ({request_slots}) < {objects} > | {uniques} |".format(
+                        "{act} [ {slot_values} ] ({request_slots}) < {objects} > {uniques} ".format(
                             act=user_belief["act"].strip(),
                             slot_values=", ".join(
                                 [
@@ -173,12 +179,12 @@ def convert_json_to_flattened(
                                 user_belief["act_attributes"]["request_slots"]
                             ),
                             objects=", ".join(
-                                [str(o) for o in user_belief["act_attributes"]["objects"]]
+                                ["O" + str(o) for o in user_belief["act_attributes"]["objects"]]
                             ),
 
-                            uniques=", ".join(
+                            uniques= START_OF_PRED_CATALOG +", ".join(
                                 [scene_graph[scene + '_scene.json']["O" + str(o)]['unique_id'] for o in user_belief["act_attributes"]["objects"] if "O" + str(o) in list(scene_graph[scene + '_scene.json'].keys())]
-                             ),
+                             ) + END_OF_PRED_CATALOG,
                         )
                     )
                 else:
@@ -326,11 +332,12 @@ def represent_visual_objects(object_ids, scene=None):
 
     str_objects = ' '.join(list_str_objects)
     """
-    str_objects = ", ".join([str(o) for o in object_ids])
     if scene is not None:
-        unique_ids = ','.join([scene["O"+str(o)]['unique_id'] for o in object_ids if "O"+str(o) in list(scene.keys())])
+        str_objects = ", ".join(["O"+str(o) for o in object_ids])
+        unique_ids = ','.join(["U" + scene["O"+str(o)]['unique_id'] for o in object_ids if "O"+str(o) in list(scene.keys())])
         return f"{START_OF_MULTIMODAL_CONTEXTS} {str_objects} {END_OF_MULTIMODAL_CONTEXTS} {START_OF_CATALOG_CONTEXTS} {unique_ids} {END_OF_CATALOG_CONTEXTS}"
     else:
+        str_objects = ", ".join([str(o) for o in object_ids])
         return f"{START_OF_MULTIMODAL_CONTEXTS} {str_objects} {END_OF_MULTIMODAL_CONTEXTS}"
 
 def parse_flattened_results_from_file(path):

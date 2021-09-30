@@ -1083,7 +1083,7 @@ def main():
             "You are instantiating a new tokenizer from scratch. This is not supported, but you can do it from another script, save it,"
             "and load it from here, using --tokenizer_name"
         )
-    tokenizer.bos_token = '<SOCR>'
+    # tokenizer.bos_token = '<SOCR>'
     args.sg_feature = sg_data_entry.sg_feature_lookup(args.graph_json_file,tokenizer)
 
     if args.add_special_tokens:
@@ -1096,7 +1096,7 @@ def main():
             special_tokens_dict = json.load(handle)
         tmp_text_list = []
 
-        tmp_text_list += Constants.OBJECTS_INV + Constants.RELATIONS_INV + Constants.ATTRIBUTES_INV
+        tmp_text_list += Constants.RELATIONS_INV + Constants.ATTRIBUTES_INV
         tmp_text_list.append("<self>")  # add special token for self-connection
         # tmp_text_list = [tmp_text_list]
         for txt in tmp_text_list:
