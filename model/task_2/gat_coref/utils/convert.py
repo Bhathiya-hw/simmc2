@@ -165,7 +165,7 @@ def convert_json_to_flattened(
                 # for bs_per_frame in user_belief:
                 if append_unique_ids:
                     str_belief_state_per_frame = (
-                        "{act} [ {slot_values} ] ({request_slots}) < {objects} > {uniques} ".format(
+                        "{act} [ {slot_values} ] ({request_slots}) {uniques} ".format(
                             act=user_belief["act"].strip(),
                             slot_values=", ".join(
                                 [
@@ -178,9 +178,9 @@ def convert_json_to_flattened(
                             request_slots=", ".join(
                                 user_belief["act_attributes"]["request_slots"]
                             ),
-                            objects=", ".join(
-                                ["O" + str(o) for o in user_belief["act_attributes"]["objects"]]
-                            ),
+                            # objects=", ".join(
+                            #     ["O" + str(o) for o in user_belief["act_attributes"]["objects"]]
+                            # ),
 
                             uniques= START_OF_PRED_CATALOG + " " + ", ".join(
                                 [scene_graph[scene + '_scene.json']["O" + str(o)]['unique_id'] for o in user_belief["act_attributes"]["objects"] if "O" + str(o) in list(scene_graph[scene + '_scene.json'].keys())]
@@ -333,9 +333,12 @@ def represent_visual_objects(object_ids, scene=None):
     str_objects = ' '.join(list_str_objects)
     """
     if scene is not None:
-        str_objects = ", ".join(["O"+str(o) for o in object_ids])
-        unique_ids = ', '.join([scene["O"+str(o)]['unique_id'] for o in object_ids if "O"+str(o) in list(scene.keys())])
-        return f"{START_OF_MULTIMODAL_CONTEXTS} {str_objects} {END_OF_MULTIMODAL_CONTEXTS}  {START_OF_CATALOG_CONTEXTS} {unique_ids} {END_OF_CATALOG_CONTEXTS} "
+        # str_objects = ", ".join(["O"+str(o) for o in object_ids])
+        # unique_ids = ', '.join([scene["O"+str(o)]['unique_id'] for o in object_ids if "O"+str(o) in list(scene.keys())])
+        # return f"{START_OF_MULTIMODAL_CONTEXTS} {str_objects} {END_OF_MULTIMODAL_CONTEXTS}  {START_OF_CATALOG_CONTEXTS} {unique_ids} {END_OF_CATALOG_CONTEXTS} "
+        # str_objects = ", ".join(["O" + str(o) for o in object_ids])
+        unique_ids = ', '.join([scene["O" + str(o)]['unique_id'] for o in object_ids if "O" + str(o) in list(scene.keys())])
+        return f"{START_OF_CATALOG_CONTEXTS} {unique_ids} {END_OF_CATALOG_CONTEXTS} "
     else:
         str_objects = ", ".join([str(o) for o in object_ids])
         return f"{START_OF_MULTIMODAL_CONTEXTS} {str_objects} {END_OF_MULTIMODAL_CONTEXTS}"

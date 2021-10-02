@@ -211,8 +211,12 @@ class MiniDictDataset(Dataset):
             else:
                 sg_data.append(scene_data_dict[key].clone())
 
-        self.context = tokenizer.batch_encode_plus(lines, add_special_tokens=True, max_length=block_size)["input_ids"]
-        self.prediction = tokenizer.batch_encode_plus(pred_lines, add_special_tokens=True, max_length=block_size)["input_ids"]
+        if args.special_encode_uniques:
+            self.context = self.special_encode(lines, tokenizer)
+            self.prediction = self.special_encode(pred_lines,tokenizer)
+        else:
+            self.context = tokenizer.batch_encode_plus(lines, add_special_tokens=True, max_length=block_size)["input_ids"]
+            self.prediction = tokenizer.batch_encode_plus(pred_lines, add_special_tokens=True, max_length=block_size)["input_ids"]
         self.scene_data = sg_data
 
     def __len__(self):
@@ -220,6 +224,33 @@ class MiniDictDataset(Dataset):
 
     def __getitem__(self, i):
         return torch.tensor(self.context[i], dtype=torch.long),torch.tensor(self.prediction[i], dtype=torch.long), self.scene_data[i]
+
+    def special_encode(self,text_contents, tokenizer):
+        encoded_lines = []
+        for line in text_contents:
+            line_encode = []
+            context, answer = line[:line.rfind("Belief State :") + len("Belief State :")], line[line.find("Belief State :") + len("Belief State :"):]
+
+            context_split = re.split('(<SCAT> | <ECAT>)', context)
+
+            for idx, context_content in enumerate(context_split):
+                if idx % 4 != 2:
+                    line_encode += tokenizer.encode(context_content)
+                    # print(line_encode)
+                else:
+                    line_encode += [tokenizer.convert_tokens_to_ids(token) for token in context_content.split(', ') if token != '']
+                    # print(line_encode)
+            # print(line_encode)
+
+            answer_split = re.split('(<SPCT> | <EPCT>)', answer)
+            for idx, answer_content in enumerate(answer_split):
+                if idx % 4 != 2:
+                    line_encode += tokenizer.encode(answer_content)
+                    # print(line_encode)
+                else:
+                    line_encode += [tokenizer.convert_tokens_to_ids(token) for token in answer_content.split(', ') if token != '']
+            encoded_lines.append(line_encode)
+        return encoded_lines
 
 def load_and_cache_for_task2(args, tokenizer, evaluate=False):
     scene_file_path = args.scene_eval_data_file if evaluate else args.scene_train_data_file
@@ -778,6 +809,13 @@ def main():
         action="store_true",
         help="Whether distinct lines of text in the dataset are to be handled as distinct sequences.",
     )
+
+    parser.add_argument(
+        "--special_encode_uniques",
+        action="store_true",
+        help="Whether distinct lines of text in the dataset are to be handled as distinct sequences.",
+    )
+
     parser.add_argument(
         "--should_continue",
         action="store_true",
