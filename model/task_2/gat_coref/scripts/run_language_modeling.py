@@ -669,27 +669,22 @@ def train(args, train_dataset, model: PreTrainedModel, tokenizer: PreTrainedToke
 
     return global_step, tr_loss / global_step
 
-
-def evaluate(
-    args, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, prefix=""
-) -> Dict:
-    # Loop to handle MNLI double evaluation (matched, mis-matched)
+def evaluate( args, model: PreTrainedModel, tokenizer: PreTrainedTokenizer, prefix=""):
     eval_output_dir = args.output_dir
 
-    eval_dataset = load_and_cache_examples(args, tokenizer, evaluate=True)
+    eval_dataset = load_and_cache_for_task2(args, tokenizer, evaluate=True)
 
     if args.local_rank in [-1, 0]:
         os.makedirs(eval_output_dir, exist_ok=True)
 
     args.eval_batch_size = args.per_gpu_eval_batch_size * max(1, args.n_gpu)
-    # Note that DistributedSampler samples randomly
 
-    def collate(examples: List[torch.Tensor]):
-        if tokenizer._pad_token is None:
-            return pad_sequence(examples, batch_first=True)
-        return pad_sequence(
-            examples, batch_first=True, padding_value=tokenizer.pad_token_id
-        )
+    def collate(data):
+        context, predict, sg_datum = tuple(zip(*data))
+        sg_datum = torch_geometric.data.Batch.from_data_list(sg_datum)
+        return pad_sequence(context, batch_first=False, padding_value=0),\
+               pad_sequence(predict, batch_first=False, padding_value=0),\
+               sg_datum,\
 
     eval_sampler = SequentialSampler(eval_dataset)
     eval_dataloader = DataLoader(
@@ -698,10 +693,6 @@ def evaluate(
         batch_size=args.eval_batch_size,
         collate_fn=collate,
     )
-
-    # multi-gpu evaluate
-    if args.n_gpu > 1:
-        model = torch_geometric.nn.DataParallel(model, follow_batch=True)
 
     # Eval!
     logger.info("***** Running evaluation {} *****".format(prefix))
@@ -712,17 +703,18 @@ def evaluate(
     model.eval()
 
     for batch in tqdm(eval_dataloader, desc="Evaluating"):
-        inputs, labels = (
-            mask_tokens(batch, tokenizer, args) if args.mlm else (batch, batch)
-        )
-        inputs = inputs.to(args.device)
+        target, predict, sg_input, = batch
+        labels = torch.cat((torch.full_like(sg_input.x[:, 0].unsqueeze(1), fill_value=-100), target))
+
+        target = target.to(args.device)
         labels = labels.to(args.device)
+        predict = predict.to(args.device)
+        sg_input = sg_input.to(args.device)
 
         with torch.no_grad():
             outputs = (
-                model(inputs, masked_lm_labels=labels)
-                if args.mlm
-                else model(inputs, labels=labels)
+                # model(questions = context, gt_scene_graphs = sg_input, programs_input = slot_values, short_answers = None, full_answers = answer, act = act, slot_values = slot_values,request_slots = request_slots )
+                model(input_ids=target, predict_input_ids=predict, sg_input=sg_input, labels=labels)
             )
             lm_loss = outputs[0]
             eval_loss += lm_loss.mean().item()
@@ -741,7 +733,6 @@ def evaluate(
             writer.write("%s = %s\n" % (key, str(result[key])))
 
     return result
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -764,7 +755,23 @@ def main():
     )
 
     parser.add_argument(
+        "--predict_eval_data_file",
+        default=None,
+        type=str,
+        required=True,
+        help="The input training data file (a text file).",
+    )
+
+    parser.add_argument(
         "--scene_train_data_file",
+        default=None,
+        type=str,
+        required=True,
+        help="The input training scene data file (a text file).",
+    )
+
+    parser.add_argument(
+        "--scene_eval_data_file",
         default=None,
         type=str,
         required=True,
@@ -1236,7 +1243,23 @@ def main():
                 checkpoint.split("/")[-1] if checkpoint.find("checkpoint") != -1 else ""
             )
 
-            model = AutoModelWithLMHead.from_pretrained(checkpoint)
+            # if args.tokenizer_name:
+            #     eval_tokenizer = AutoTokenizer.from_pretrained(
+            #         args.tokenizer_name, cache_dir=args.cache_dir
+            #     )
+            # elif args.model_name_or_path:
+            #     eval_tokenizer = AutoTokenizer.from_pretrained(
+            #         args.model_name_or_path, cache_dir=args.cache_dir
+            #     )
+            # else:
+            #     raise ValueError(
+            #         "You are instantiating a new tokenizer from scratch. This is not supported, but you can do it from another script, save it,"
+            #         "and load it from here, using --tokenizer_name"
+            #     )
+            # eval_config = AutoConfig.from_pretrained(args.model_name_or_path)
+            # model = AutoModelWithLMHead.from_pretrained(checkpoint)
+            # model = g2d.Graph2Dial.from_pretrained(checkpoint)
+            model = g2d.Graph2Dial.from_pretrained(pretrained_model_name_or_path=args.model_name_or_path, config=config, tokenizer=tokenizer, with_ins=args.with_ins, gat_conv_layers=args.gat_conv_layers)
             model.to(args.device)
             result = evaluate(args, model, tokenizer, prefix=prefix)
             result = {k + "_{}".format(global_step): v for k, v in result.items()}

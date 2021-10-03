@@ -90,12 +90,12 @@ def convert_json_to_flattened(
 
     predicts = []
     targets = []
+    additional_special_tokens = []
     if input_path_special_tokens != "":
         with open(input_path_special_tokens, "r") as f_in:
             special_tokens = json.load(f_in)
     else:
         special_tokens = {"eos_token": END_OF_SENTENCE}
-        additional_special_tokens = []
         if use_belief_states:
             additional_special_tokens.append(END_OF_BELIEF)
         else:
@@ -104,10 +104,9 @@ def convert_json_to_flattened(
             additional_special_tokens.extend(
                 [START_OF_MULTIMODAL_CONTEXTS, END_OF_MULTIMODAL_CONTEXTS]
             )
-        if append_unique_ids:
-            additional_special_tokens.extend(Constants.OBJECTS_INV)
-            additional_special_tokens.extend(Constants.ATTRIBUTES_INV)
-        special_tokens["additional_special_tokens"] = additional_special_tokens
+    additional_special_tokens.extend(Constants.OBJECTS_INV)
+    additional_special_tokens.extend(Constants.ATTRIBUTES_INV)
+    special_tokens["additional_special_tokens"] = additional_special_tokens
 
     if output_path_special_tokens != "":
         # If a new output path for special tokens is given,

@@ -216,7 +216,7 @@ class sg_feature_lookup:
             # - obj['x'], obj['y'], obj['w'], obj['h']
             ##################################
             # MAX_OBJ_TOKEN_LEN = 4 # 1 name + 3 attributes
-            MAX_OBJ_TOKEN_LEN = 20
+            MAX_OBJ_TOKEN_LEN = 100
 
             # 4 X '<pad>'
             object_token_arr = np.ones(MAX_OBJ_TOKEN_LEN, dtype=np.int_) * self.tokenize.pad_token_type_id
@@ -234,8 +234,13 @@ class sg_feature_lookup:
             # Comment out this to see the importance of attributes
             ##################################
             local2unique[objId]
+            i = 1
             for attr_idx, attr in enumerate(set(scene[objId]['non-visual'] + scene[objId]['visual'] + [str(scene[objId]['unique_id'])])):
-                object_token_arr[attr_idx + 1] = tokenizer.convert_tokens_to_ids(attr)#mini_dict[attr]#tokenizer.vocab[attr]
+                encoded_attr = tokenizer.encode(attr)
+                for encoded_item in encoded_attr:
+                    object_token_arr[i] = encoded_item
+                    i +=1
+                #object_token_arr[attr_idx + 1] = tokenizer.enncode(attr)#tokenizer.convert_tokens_to_ids(attr)#mini_dict[attr]#tokenizer.vocab[attr]
 
             node_feature_list.append(object_token_arr)
 
