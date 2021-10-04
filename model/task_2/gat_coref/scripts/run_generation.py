@@ -54,6 +54,7 @@ import torch_geometric.transforms
 import torch_geometric.utils
 import gat_coref.scripts.graph_representation.sg_data_entry as sg_data_entry
 import gat_coref.scripts.graph2dial as g2d
+import re
 
 logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s",
@@ -161,16 +162,46 @@ tmp_text_list = []
 
 def prepare_graph2dial_input(args,_,tokenizer, prompt_text,scene_key):
         sg_datum = args.sg_feature.convert_one_gqa_scene_graph(scene_key.strip(), tokenizer)
-        encoded_prompt = tokenizer.encode(
+
+        if args.special_encode_uniques:
+            encoded_prompt = special_encode([prompt_text], tokenizer)
+        else:
+            encoded_prompt = tokenizer.encode(
             prompt_text,
             add_special_tokens=True,
             return_tensors="pt",
             add_space_before_punct_symbol=True,
-        )
+            )
 
         sg_datum_processed = torch_geometric.data.Batch.from_data_list([sg_datum])
         return encoded_prompt,sg_datum_processed
 
+def special_encode(text_contents, tokenizer):
+    encoded_lines = []
+    for line in text_contents:
+        line_encode = []
+        context, answer = line[:line.rfind("Belief State :") + len("Belief State :")], line[line.find("Belief State :") + len("Belief State :"):]
+
+        context_split = re.split('(<SCAT> | <ECAT>)', context)
+
+        for idx, context_content in enumerate(context_split):
+            if idx % 4 != 2:
+                line_encode += tokenizer.encode(context_content)
+                # print(line_encode)
+            else:
+                line_encode += [tokenizer.convert_tokens_to_ids(token) for token in context_content.split(', ') if token != '']
+                # print(line_encode)
+        # print(line_encode)
+
+        answer_split = re.split('(<SPCT> | <EPCT>)', answer)
+        for idx, answer_content in enumerate(answer_split):
+            if idx % 4 != 2:
+                line_encode += tokenizer.encode(answer_content)
+                # print(line_encode)
+            else:
+                line_encode += [tokenizer.convert_tokens_to_ids(token) for token in answer_content.split(', ') if token != '']
+        encoded_lines.append(line_encode)
+    return torch.tensor(encoded_lines, dtype=torch.long)
 PREPROCESSING_FUNCTIONS = {
     "ctrl": prepare_ctrl_input,
     "xlm": prepare_xlm_input,
@@ -309,12 +340,18 @@ command line""",
         default=None,
         help="Path to output predictions in a line separated text file.",
     )
+    parser.add_argument(
+        "--special_encode_uniques",
+        action="store_true",
+        help="Whether distinct lines of text in the dataset are to be handled as distinct sequences.",
+    )
+
     args = parser.parse_args()
 
     args.device = torch.device(
         "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
     )
-    torch.cuda.set_device(3)
+    # torch.cuda.set_device(3)
     args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
 
     set_seed(args)
