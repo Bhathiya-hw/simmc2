@@ -263,12 +263,12 @@ class MiniDictDataset(Dataset):
 
                     req_groups = re.split('(\(|\) )', answer_content.strip())[1:4]
                     line_encode += [tokenizer.convert_tokens_to_ids(req_groups[0].strip())]
-                    line_encode += tokenizer.encode(req_groups[1])
+                    line_encode += [tokenizer.convert_tokens_to_ids(token) for token in req_groups[1].split(', ') if token != '']
                     line_encode += [tokenizer.convert_tokens_to_ids(req_groups[2].strip())]
 
                     o_groups = re.split('(< | >)', answer_content.strip())[1:4]
                     line_encode += [tokenizer.convert_tokens_to_ids(o_groups[0].strip())]
-                    line_encode += tokenizer.encode(o_groups[1].strip())
+                    line_encode += [tokenizer.convert_tokens_to_ids(token) for token in o_groups[1].split(', ') if token != '']
                     line_encode += [tokenizer.convert_tokens_to_ids(o_groups[2].strip())]
 
                 elif idx % 4 != 2:
@@ -1098,7 +1098,7 @@ def main():
         device = torch.device(
             "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
         )
-        # torch.cuda.set_device(2)
+        torch.cuda.set_device(2)
         args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
