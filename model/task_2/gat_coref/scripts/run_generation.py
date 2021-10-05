@@ -185,23 +185,78 @@ def special_encode(text_contents, tokenizer):
         context_split = re.split('(<SCAT> | <ECAT>)', context)
 
         for idx, context_content in enumerate(context_split):
-            if idx % 4 != 2:
+            if idx % 4 == 0:
+                multimedia_split = re.split('(<SOM> | <EOM>)', context_content.strip())
+                for inner_idx,mm_content in enumerate(multimedia_split):
+                    if inner_idx % 4 != 2:
+                        line_encode += tokenizer.encode(mm_content)
+                    else:
+                        line_encode += [tokenizer.convert_tokens_to_ids(token) for token in mm_content.split(', ') if token != '']
+
+            elif idx % 4 != 2:
                 line_encode += tokenizer.encode(context_content)
                 # print(line_encode)
             else:
                 line_encode += [tokenizer.convert_tokens_to_ids(token) for token in context_content.split(', ') if token != '']
                 # print(line_encode)
         # print(line_encode)
-
+        answer = ''  if  answer == ' ' else answer
         answer_split = re.split('(<SPCT> | <EPCT>)', answer)
         for idx, answer_content in enumerate(answer_split):
-            if idx % 4 != 2:
+            if idx == 0 and answer_content != '':
+                act =  re.split('(\[ | \] )', answer_content.strip())[0]
+                line_encode += [tokenizer.convert_tokens_to_ids(act.strip())]
+
+                slot_groups = re.split('(\[ | \] )', answer_content.strip())[1:4]
+                line_encode += [tokenizer.convert_tokens_to_ids(slot_groups[0].strip())]
+                line_encode += tokenizer.encode(slot_groups[1])
+                line_encode += [tokenizer.convert_tokens_to_ids(slot_groups[2].strip())]
+
+                req_groups = re.split('(\(|\) )', answer_content.strip())[1:4]
+                line_encode += [tokenizer.convert_tokens_to_ids(req_groups[0].strip())]
+                line_encode += tokenizer.encode(req_groups[1])
+                line_encode += [tokenizer.convert_tokens_to_ids(req_groups[2].strip())]
+
+                o_groups = re.split('(< | >)', answer_content.strip())[1:4]
+                line_encode += [tokenizer.convert_tokens_to_ids(o_groups[0].strip())]
+                line_encode += tokenizer.encode(o_groups[1].strip())
+                line_encode += [tokenizer.convert_tokens_to_ids(o_groups[2].strip())]
+
+            elif idx % 4 != 2:
                 line_encode += tokenizer.encode(answer_content)
                 # print(line_encode)
             else:
                 line_encode += [tokenizer.convert_tokens_to_ids(token) for token in answer_content.split(', ') if token != '']
+        print(tokenizer.decode(line_encode))
         encoded_lines.append(line_encode)
     return torch.tensor(encoded_lines, dtype=torch.long)
+
+# def special_encode(text_contents, tokenizer):
+#     encoded_lines = []
+#     for line in text_contents:
+#         line_encode = []
+#         context, answer = line[:line.rfind("Belief State :") + len("Belief State :")], line[line.find("Belief State :") + len("Belief State :"):]
+#
+#         context_split = re.split('(<SCAT> | <ECAT>)', context)
+#
+#         for idx, context_content in enumerate(context_split):
+#             if idx % 4 != 2:
+#                 line_encode += tokenizer.encode(context_content)
+#                 # print(line_encode)
+#             else:
+#                 line_encode += [tokenizer.convert_tokens_to_ids(token) for token in context_content.split(', ') if token != '']
+#                 # print(line_encode)
+#         # print(line_encode)
+#
+#         answer_split = re.split('(<SPCT> | <EPCT>)', answer)
+#         for idx, answer_content in enumerate(answer_split):
+#             if idx % 4 != 2:
+#                 line_encode += tokenizer.encode(answer_content)
+#                 # print(line_encode)
+#             else:
+#                 line_encode += [tokenizer.convert_tokens_to_ids(token) for token in answer_content.split(', ') if token != '']
+#         encoded_lines.append(line_encode)
+#     return torch.tensor(encoded_lines, dtype=torch.long)
 PREPROCESSING_FUNCTIONS = {
     "ctrl": prepare_ctrl_input,
     "xlm": prepare_xlm_input,
@@ -351,7 +406,7 @@ command line""",
     args.device = torch.device(
         "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
     )
-    # torch.cuda.set_device(3)
+    torch.cuda.set_device(1)
     args.n_gpu = 0 if args.no_cuda else 1 #torch.cuda.device_count()
 
     set_seed(args)
