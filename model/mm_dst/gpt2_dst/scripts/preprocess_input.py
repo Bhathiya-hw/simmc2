@@ -14,6 +14,7 @@ root directory of this source tree.
 from gpt2_dst.utils.convert import convert_json_to_flattened
 import argparse
 
+
 if __name__ == "__main__":
     # Parse input args
     parser = argparse.ArgumentParser()
@@ -51,6 +52,21 @@ if __name__ == "__main__":
         default=True,
         help="determine whether to use belief state for each turn",
     )
+    parser.add_argument(
+        "--no_target",
+        dest="output_target",
+        action="store_false",
+        default=True,
+        help="determine whether to output a formatted output for Target",                
+    )
+
+    # Options for retrieval evaluation.
+    parser.add_argument(
+        "--input_path_retrieval", help="input path to the retrieval candidates",
+    )
+    parser.add_argument(
+        "--output_path_retrieval", help="output path to retrieval candidates",
+    )
 
     args = parser.parse_args()
     input_path_json = args.input_path_json
@@ -60,6 +76,9 @@ if __name__ == "__main__":
     output_path_special_tokens = args.output_path_special_tokens
     len_context = args.len_context
     use_multimodal_contexts = bool(args.use_multimodal_contexts)
+    # Retrieval encoding arguments.
+    input_path_retrieval = args.input_path_retrieval
+    output_path_retrieval = args.output_path_retrieval
 
     # DEBUG:
     print("Belief states: {}".format(args.use_belief_states))
@@ -74,4 +93,7 @@ if __name__ == "__main__":
         len_context=len_context,
         use_multimodal_contexts=use_multimodal_contexts,
         use_belief_states=args.use_belief_states,
+        output_target=args.output_target,
+        input_path_retrieval=input_path_retrieval,
+        output_path_retrieval=output_path_retrieval,
     )

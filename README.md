@@ -18,6 +18,9 @@ For this challenge, we release a new Immersive SIMMC 2.0 dataset in the shopping
 
 ### Latest News
 
+* **[Oct 1, 2021]** [Test-Std set for the final evaluation](https://github.com/facebookresearch/simmc2/commit/8d23c4879dd873df311b6c49c0674896537b6087) is released. Please follow the [submission instructions carefully](https://github.com/facebookresearch/simmc2/blob/master/SUBMISSION_INSTRUCTIONS.md) and contact us if you have any questions.
+* **[Sept 24, 2021]** Submission deadlines have been pushed to accommodate for a [slight change](https://github.com/facebookresearch/simmc2/commit/741e6d32dc354b7c17de7a1b5ec639343f4286d6) in the DST evaluation script. Please see the [Submission Instructions](SUBMISSION_INSTRUCTIONS.md) for more details on the dates.
+* **[Sept 14, 2021]** Retrieval candidates for `dev` and `devtest` released.
 * **[June 14, 2021]** Challenge announcement. Training / development datasets (SIMMC v2.0) are released.
 
 
@@ -26,19 +29,21 @@ For this challenge, we release a new Immersive SIMMC 2.0 dataset in the shopping
 * [Task Description Paper][simmc2_arxiv]
 * [Challenge Registration](https://docs.google.com/forms/d/e/1FAIpQLSe9CgrlygYciIZH_pK8133fbp1kqigTB6JIP7utfNFx_xSm6A/viewform)
 * [Data Formats](data/README.md)
-* **Baseline Details**: Will be added soon!
+* Baseline Details & Results: [Subtask1][subtask1_results], [Subtask 2, 3, 4][subtask2_results]
 * [Challenge Instructions](#challenge-instructions)
 * [Submission Instructions](SUBMISSION_INSTRUCTIONS.md)
 
 
 ## Timeline
 
+**NOTE**: All deadlines are 11:59PM UTC-12:00 ("anywhere on Earth"), unless otherwise noted.
+
 | **Date** | **Milestone** |
 | :--: | :-- |
 | June 14, 2021 | Training & development data released |
-| Sept 24, 2021  | Test-Std data released, End of Challenge Phase 1 |
-| Oct 1, 2021 | Entry submission deadline, End of Challenge Phase 2 |
-| Oct 8, 2021 | Final results announced |
+| ~~Sept 24~~ ***Oct 1***, 2021  | Test-Std data released, End of Challenge Phase 1 |
+| ~~Oct 1~~ ***Oct 8***, 2021 | Entry submission deadline, End of Challenge Phase 2 |
+| ~~Oct 8~~ ***By Oct 15***, 2021 | Final results announced |
 
 
 ## Track Description
@@ -85,12 +90,12 @@ For the DSTC10 SIMMC Track, we will do a two phase evaluation as follows.
 
 **Challenge Period 1**:
 Participants will evaluate the model performance on the provided `devtest` set.
-At the end of Challenge Period 1 (Sept 24), we ask participants to submit their model prediction results and a link to their code repository.
+At the end of Challenge Period 1 (~~Sept 24~~ Oct 1), we ask participants to submit their model prediction results and a link to their code repository.
 
 **Challenge Period 2**:
-A `test-std` set will be released on Sept 28 for the participants who submitted the results for the Challenge Period 1.
-We ask participants to submit their model predictions on the `test-std` set by Oct 1. 
-We will announce the final results and the winners on Oct 8.
+A `test-std` set will be released on Oct 1 for the participants who submitted the results for the Challenge Period 1.
+We ask participants to submit their model predictions on the `test-std` set by ~~Oct 1~~ Oct 8. 
+We will announce the final results and the winners on ~~Oct 8~~ Oct 15.
 
 ### Baseline Results
 
@@ -123,7 +128,7 @@ $ git clone https://github.com/facebookresearch/simmc2.git
 
 ### (3) Reporting Results for Challenge Phase 1
 * Submit your model prediction results on the `devtest` set, following the [submission instructions](./SUBMISSION_INSTRUCTIONS.md). 
-* We will release the `test-std` set (with ground-truth labels hidden) on Sept 24.
+* We will release the `test-std` set (with ground-truth labels hidden) on Oct 1.
 
 ### (4) Reporting Results for Challenge Phase 2
 * Submit your model prediction results on the `test-std` set, following the [submission instructions](./SUBMISSION_INSTRUCTIONS.md). 
@@ -138,6 +143,10 @@ $ git clone https://github.com/facebookresearch/simmc2.git
 2. _What are the tasks inputs for each of the subtasks?_
 
 * The allowed set of inputs for each task is defined [here](https://github.com/facebookresearch/simmc2/blob/master/TASK_INPUTS.md).
+
+3. _Can we make multiple submissions?_
+
+* Similar to other challenges, we are allowing multiple submissions per team if the models' architectures are technically different, or a substantially different training scheme was used to train each model. In these cases, we will evaluate each model independently. If the only difference is, for example, different random seeds, or randomized starting points then we would ask that participants select and submit only one entry for that modeling approach. Overall, we would prefer each team to limit their total number of submissions to say 4 different approaches.
 
 ## Contact
 
