@@ -48,6 +48,7 @@ def convert_json_to_flattened(
     use_sys_belief_state =True,
     input_path_special_tokens="",
     output_path_special_tokens="",
+    output_path_dt=""
 ):
     """
     Input: JSON representation of the dialogs
@@ -61,7 +62,7 @@ def convert_json_to_flattened(
     targets = []
     scenes = []
     beliefs = []
-    disambiguate_labels = []
+    dialogue_turns = []
     if input_path_special_tokens != "":
         with open(input_path_special_tokens, "r") as f_in:
             special_tokens = json.load(f_in)
@@ -212,7 +213,7 @@ def convert_json_to_flattened(
                     START_OF_RESPONSE=START_OF_RESPONSE,
                 )
                 predicts.append(predict)
-
+                dialogue_turns.append(str(dialog['dialogue_idx']) + '_' + str(turn['turn_idx']))
                 # Format the main output
                 target = TEMPLATE_TARGET.format(
                     context=context,
@@ -231,7 +232,7 @@ def convert_json_to_flattened(
                     context=context, START_OF_RESPONSE=START_OF_RESPONSE
                 )
                 predicts.append(predict)
-
+                dialogue_turns.append(str(dialog['dialogue_idx']) + '_' + str(turn['turn_idx']))
                 # Format the main output
                 target = TEMPLATE_TARGET_NOBELIEF.format(
                     context=context,
@@ -268,6 +269,10 @@ def convert_json_to_flattened(
             # Add oov's (acts and slot names, etc.) to special tokens as well
             special_tokens["additional_special_tokens"].extend(list(oov))
             json.dump(special_tokens, f_special_tokens)
+
+    with open(output_path_dt, "w", encoding="utf-8") as f_dt:
+        dts = "\n".join(dialogue_turns)
+        f_dt.write(dts)
 
 def add_visual_descriptions(graph, object_ids):
     feature_strings = []

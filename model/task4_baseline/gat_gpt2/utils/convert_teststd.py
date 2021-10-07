@@ -48,6 +48,7 @@ def convert_json_to_flattened(
     use_sys_belief_state =True,
     input_path_special_tokens="",
     output_path_special_tokens="",
+    output_path_dt=""
 ):
     """
     Input: JSON representation of the dialogs
@@ -61,7 +62,7 @@ def convert_json_to_flattened(
     targets = []
     scenes = []
     beliefs = []
-    disambiguate_labels = []
+    dialogue_turns = []
     if input_path_special_tokens != "":
         with open(input_path_special_tokens, "r") as f_in:
             special_tokens = json.load(f_in)
@@ -179,7 +180,7 @@ def convert_json_to_flattened(
                     START_OF_RESPONSE=START_OF_RESPONSE,
                 )
                 predicts.append(predict)
-
+                dialogue_turns.append(str(dialog['dialogue_idx']) + '_' + str(turn['turn_idx']))
                 # Format the main output
                 # target = TEMPLATE_TARGET.format(
                 #     context=context,
@@ -198,6 +199,7 @@ def convert_json_to_flattened(
                     context=context, START_OF_RESPONSE=START_OF_RESPONSE
                 )
                 # predicts.append(predict)
+                # dialogue_turns.append(str(dialog['dialogue_idx']) + '_' + str(turn['turn_idx']))
 
                 # # Format the main output
                 # target = TEMPLATE_TARGET_NOBELIEF.format(
@@ -213,17 +215,13 @@ def convert_json_to_flattened(
     if not os.path.exists(directory):
         os.makedirs(directory, exist_ok=True)
 
-    # directory = os.path.dirname(output_path_target)
-    # if not os.path.exists(directory):
-    #     os.makedirs(directory, exist_ok=True)
-
     with open(output_path_predict, "w", encoding="utf-8") as f_predict:
         X = "\n".join(predicts)
         f_predict.write(X)
 
-    # with open(output_path_target, "w", encoding="utf-8") as f_target:
-    #     Y = "\n".join(targets)
-    #     f_target.write(Y)
+    with open(output_path_dt, "w", encoding="utf-8") as f_dt:
+        dts = "\n".join(dialogue_turns)
+        f_dt.write(dts)
 
     if output_path_special_tokens != "":
         # Create a directory if it does not exist
