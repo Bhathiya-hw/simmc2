@@ -18,18 +18,12 @@ if __name__ == "__main__":
     # Parse input args
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--baseline", help="which baseline format to convert")
     parser.add_argument(
         "--input_path_json", help="input path to the original dialog data"
     )
-    parser.add_argument(
-        "--input_scene_graph", help="input path to the scene graph"
-    )
-    parser.add_argument("--output_path_sys_belief", help="output path belief")
     parser.add_argument("--output_path_predict", help="output path for model input")
-    parser.add_argument("--output_path_scene", help="output path for model scene input")
+    parser.add_argument("--output_path_dt", help="output path for model scene input")
     parser.add_argument("--output_path_target", help="output path for full target")
-    parser.add_argument("--output_path_disambiguate", help="output path for disambiguation label")
     parser.add_argument(
         "--input_path_special_tokens",
         help="input path for special tokens. blank if not provided",
@@ -62,16 +56,13 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     input_path_json = args.input_path_json
-    output_path_sys_belief = args.output_path_sys_belief
     output_path_predict = args.output_path_predict
     output_path_target = args.output_path_target
-    output_path_disambiguate = args.output_path_disambiguate
-    output_path_scene = args.output_path_scene
     input_path_special_tokens = args.input_path_special_tokens
     output_path_special_tokens = args.output_path_special_tokens
     len_context = args.len_context
     use_multimodal_contexts = bool(args.use_multimodal_contexts)
-    input_scene_graph = args.input_scene_graph
+    output_path_dt = args.output_path_dt
     # DEBUG:
     print("Belief states: {}".format(args.use_belief_states))
 
@@ -85,5 +76,6 @@ if __name__ == "__main__":
             output_path_special_tokens=output_path_special_tokens,
             len_context=len_context,
             use_multimodal_contexts=use_multimodal_contexts,
-            use_belief_states=args.use_belief_states
+            use_belief_states=args.use_belief_states,
+            output_path_dt = output_path_dt
         )
