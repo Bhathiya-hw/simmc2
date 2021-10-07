@@ -35,7 +35,7 @@ class Graph2Dial(GPT2PreTrainedModel):
                             encoder_attention_mask=None, use_cache=None):
 
         #GPT2
-        print(input_ids.shape)
+        # print(input_ids.shape)
         dial_out = self.transformer(input_ids=input_ids, labels=labels,return_dict=True,output_attentions=output_attentions,
                         output_hidden_states=output_hidden_states)
         return dial_out#, da_loss,pred_loss, dial_out
