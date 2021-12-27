@@ -279,6 +279,8 @@ class MiniDictDataset(Dataset):
                         # print(line_encode)
                     else:
                         line_encode += [tokenizer.convert_tokens_to_ids(token) for token in answer_content.split(', ') if token != '']
+            else:
+                line_encode += tokenizer.encode(answer)
             print(tokenizer.decode(line_encode))
             encoded_lines.append(line_encode)
         return encoded_lines
