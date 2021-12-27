@@ -12,7 +12,8 @@ root directory of this source tree.
     DST model baseline.
 """
 # from glimmer_coref.utils.convert import convert_json_to_flattened
-from glimmer_coref.utils.convert import convert_json_to_flattened
+import glimmer_coref.utils.convert as coref
+import glimmer_coref.utils.convert_disambiguate as disambiguate
 import argparse
 
 
@@ -47,6 +48,14 @@ if __name__ == "__main__":
         type=int,
         default=2,
     )
+
+    parser.add_argument(
+        "--task_id",
+        help="# task to convert 1:disambiguate 2: coref  4: nlg",
+        type=int,
+        default=2,
+    )
+
     parser.add_argument(
         "--use_multimodal_contexts",
         help="determine whether to use the multimodal contexts each turn",
@@ -87,6 +96,7 @@ if __name__ == "__main__":
     input_path_special_tokens = args.input_path_special_tokens
     output_path_special_tokens = args.output_path_special_tokens
     len_context = args.len_context
+    task_id = args.task_id
     use_multimodal_contexts = bool(args.use_multimodal_contexts)
     # Retrieval encoding arguments.
     input_path_retrieval = args.input_path_retrieval
@@ -101,20 +111,39 @@ if __name__ == "__main__":
     print("Belief states: {}".format(args.use_belief_states))
 
     # Convert the data into GPT-2 friendly format
-    convert_json_to_flattened(
-        input_path_json,
-        output_path_predict,
-        output_path_target,
-        input_path_special_tokens=input_path_special_tokens,
-        output_path_special_tokens=output_path_special_tokens,
-        len_context=len_context,
-        use_multimodal_contexts=use_multimodal_contexts,
-        use_belief_states=args.use_belief_states,
-        input_path_retrieval=input_path_retrieval,
-        output_path_retrieval=output_path_retrieval,
-        input_path_scene_graph= input_path_scene_graph,
-        output_path_scene = output_path_scene,
-        output_path_err= output_path_err,
-        input_path_fahsion_meta =input_path_fashion_meta,
-        input_path_furniture_meta=input_path_furniture_meta
-    )
+    if task_id ==1:
+        disambiguate.convert_json_to_flattened(
+                    input_path_json,
+                    output_path_predict,
+                    output_path_target,
+                    input_path_special_tokens=input_path_special_tokens,
+                    output_path_special_tokens=output_path_special_tokens,
+                    len_context=len_context,
+                    use_multimodal_contexts=use_multimodal_contexts,
+                    use_belief_states=args.use_belief_states,
+                    input_path_retrieval=input_path_retrieval,
+                    output_path_retrieval=output_path_retrieval,
+                    input_path_scene_graph= input_path_scene_graph,
+                    output_path_scene = output_path_scene,
+                    output_path_err= output_path_err,
+                    input_path_fahsion_meta =input_path_fashion_meta,
+                    input_path_furniture_meta=input_path_furniture_meta
+                )
+    elif task_id == 2:
+        coref.convert_json_to_flattened(
+            input_path_json,
+            output_path_predict,
+            output_path_target,
+            input_path_special_tokens=input_path_special_tokens,
+            output_path_special_tokens=output_path_special_tokens,
+            len_context=len_context,
+            use_multimodal_contexts=use_multimodal_contexts,
+            use_belief_states=args.use_belief_states,
+            input_path_retrieval=input_path_retrieval,
+            output_path_retrieval=output_path_retrieval,
+            input_path_scene_graph= input_path_scene_graph,
+            output_path_scene = output_path_scene,
+            output_path_err= output_path_err,
+            input_path_fahsion_meta =input_path_fashion_meta,
+            input_path_furniture_meta=input_path_furniture_meta
+        )
