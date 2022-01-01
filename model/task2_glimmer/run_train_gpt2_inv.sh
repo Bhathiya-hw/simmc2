@@ -1,4 +1,3 @@
-
 #!/bin/bash
 if [[ $# -lt 1 ]]
 then
@@ -12,7 +11,7 @@ fi
 
 # Train (multi-modal)
 python3 -m glimmer_coref.scripts.run_language_modeling \
-  --output_dir="${PATH_DIR}"/glimmer_coref/save/both_inv_graph100  \
+  --output_dir="${PATH_DIR}"/glimmer_coref/save/glimm_v1  \
   --model_type=gpt2 \
   --model_name_or_path=gpt2 \
   --line_by_line \
@@ -26,6 +25,6 @@ python3 -m glimmer_coref.scripts.run_language_modeling \
   --per_gpu_train_batch_size=1  \
   --per_gpu_eval_batch_size=1 \
   --per_gpu_eval_batch_size=1 \
-  --save_steps=5000 \
+  --save_steps=10 \
   --gat_conv_layers=4 \
   --special_encode_uniques

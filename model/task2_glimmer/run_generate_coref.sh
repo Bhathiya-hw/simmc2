@@ -5,11 +5,10 @@ then
 else
     PATH_DIR=$(realpath "$1")
 fi
-
 # Generate sentences (Furniture, multi-modal)
 python -m glimmer_coref.scripts.run_generation \
 --model_type=graph2dial  \
---model_name_or_path="${PATH_DIR}"/glimmer_coref/save//glimm_v1 \
+--model_name_or_path="${PATH_DIR}"/glimmer_coref/save/glimm_coref/checkpoint-50 \
 --num_return_sequences=1  \
 --length=100  \
 --stop_token='<EOS>'  \
