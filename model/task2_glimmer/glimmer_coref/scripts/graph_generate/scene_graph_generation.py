@@ -67,7 +67,7 @@ if __name__ == "__main__":
         # object_graphs[key].append({('furniture', 'visual'): furniture_vis})
 
     scene_graph = {}
-    image_paths = ['/home/bhash/GAT2GPT/simmc2/data/public/']
+    image_paths = ['/home/hsb2000/workspace/glimmer/simmc2/data/public/']
 
 
 
