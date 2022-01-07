@@ -65,7 +65,7 @@ class sg_feature_lookup:
             for attr in (obj['non-visual'] + obj['visual']):
                 nodes_list.add(attr)
                 # edge_list.add(attr.split('=')[0].strip())
-            nodes_list.add('unique_id = ' + str(obj['unique_id']))
+            nodes_list.add('inventory_id = ' + str(obj['inventory_id']))
 
         map_nodes_to_node_idx = {nodeID: node_idx for node_idx, nodeID in enumerate(nodes_list)}
 
@@ -175,7 +175,7 @@ class sg_feature_lookup:
         ##################################
         scene = self.graph[sg_this]
         # SG_ENCODING_TEXT = GQA_gt_sg_feature_lookup.SG_ENCODING_TEXT
-        local2unique = {str(k):v['unique_id'] for k,v in scene.items()}
+        local2unique = {str(k):v['inventory_id'] for k,v in scene.items()}
         ##################################
         # graph node: objects
         ##################################
@@ -235,7 +235,7 @@ class sg_feature_lookup:
             ##################################
             local2unique[objId]
             i = 1
-            for attr_idx, attr in enumerate(set(scene[objId]['non-visual'] + scene[objId]['visual'] + [str(scene[objId]['unique_id'])])):
+            for attr_idx, attr in enumerate(set(scene[objId]['non-visual'] + scene[objId]['visual'] + [str(scene[objId]['inventory_id'])])):
                 encoded_attr = tokenizer.encode(attr)
                 for encoded_item in encoded_attr:
                     object_token_arr[i] = encoded_item

@@ -406,6 +406,15 @@ def parse_flattened_results_from_file(path):
 
     return results
 
+def parse_disambiguation_label_from_file(path):
+    results = []
+    with open(path, "r") as f_in:
+        for line in f_in:
+            label = line.split('=>')[1].replace('<EOS>', '').strip() == 'YES' #parse_flattened_result(line)
+            results.append(label)
+
+    return results
+
 
 def parse_flattened_result(to_parse):
     """
