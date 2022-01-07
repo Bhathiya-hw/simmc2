@@ -48,10 +48,10 @@ if __name__ == "__main__":
              # prefab_path = object_graph['prefab']
              relations = object_graph['relation']
 
-             unique_id_attr = str(object_graph['unique_id'])
-             SPECIAL_ATTRIBUTE_TOKENS.append(unique_id_attr)
+             inventory_id_attr = str(object_graph['inventory_id'])
+             SPECIAL_ATTRIBUTE_TOKENS.append(inventory_id_attr)
 
-             object_attr = visual + non_visual + [unique_id_attr]
+             object_attr = visual + non_visual + [inventory_id_attr]
              object2attributes[object_index] = object_attr
 
              for vis_rel in visual:

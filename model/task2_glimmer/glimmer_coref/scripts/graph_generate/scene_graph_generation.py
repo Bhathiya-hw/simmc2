@@ -22,6 +22,9 @@ if __name__ == "__main__":
     fashion_meta = json.load(open(fashion_json_input))
     furniture_meta = json.load(open(furniture_json_input))
 
+    prefabs2ind = {pf:"INV_"+str(i) for i,pf in enumerate(list(fashion_meta.keys()) +list(furniture_meta.keys()))}
+    ind2prefab = {v:k for k,v in prefabs2ind.items()}
+
     object_graphs = {}
     for key in fashion_meta:
         object_node = fashion_meta[key]
@@ -105,7 +108,7 @@ if __name__ == "__main__":
                     instance_node_id = "O" + str(instance['index'])
                     scene_graph[scene][instance_node_id] = object_graphs[instance['prefab_path']].copy()
                     scene_graph[scene][instance_node_id]['prefab'] = instance['prefab_path']
-                    scene_graph[scene][instance_node_id]['unique_id'] = "U" + str(instance['unique_id'])
+                    scene_graph[scene][instance_node_id]['inventory_id'] = "INV_" +  str(prefabs2ind[instance['prefab_path']])#str(instance['unique_id'])
                     scene_graph[scene][instance_node_id]['bbox'] = instance['bbox']
                     if 'relation' in scene_graph[scene][instance_node_id].keys():
                       print("Not empty")

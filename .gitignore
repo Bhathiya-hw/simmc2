@@ -136,3 +136,11 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+/model/task2_glimmer/glimmer_coref/save/
+/model/task2_glimmer/runs/
+/model/task2_glimmer/runs/
+/model/task2_glimmer/runs/Dec26_23-57-56_Bhash-Predator-PH317-52/
+/model/task2_glimmer/runs/Dec26_00-25-56_Bhash-Predator-PH317-52/
+/model/task2_glimmer/runs/Dec26_00-07-08_Bhash-Predator-PH317-52/
+/model/task2_glimmer/runs/
+/model/task2_glimmer/glimmer_coref/scripts/runs/
