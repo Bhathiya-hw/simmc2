@@ -65,7 +65,7 @@ class sg_feature_lookup:
             for attr in (obj['non-visual'] + obj['visual']):
                 nodes_list.add(attr)
                 # edge_list.add(attr.split('=')[0].strip())
-            nodes_list.add('unique_id = ' + str(obj['unique_id']))
+            nodes_list.add('inventory_id = ' + str(obj['inventory_id']))
 
         map_nodes_to_node_idx = {nodeID: node_idx for node_idx, nodeID in enumerate(nodes_list)}
 

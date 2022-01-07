@@ -12,7 +12,7 @@ root directory of this source tree.
     DST model baseline.
 """
 # from glimmer_coref.utils.convert import convert_json_to_flattened
-import glimmer_coref.utils.convert as coref
+import glimmer_coref.utils.convert_coref_spatial as coref
 import glimmer_coref.utils.convert_disambiguate as disambiguate
 import argparse
 

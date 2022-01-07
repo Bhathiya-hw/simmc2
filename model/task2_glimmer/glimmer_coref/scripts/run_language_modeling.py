@@ -239,10 +239,22 @@ class MiniDictDataset(Dataset):
                 if idx % 4 == 0:
                     multimedia_split = re.split('(<SOM> | <EOM>)', context_content.strip())
                     for inner_idx,mm_content in enumerate(multimedia_split):
-                        if inner_idx % 4 != 2:
-                            line_encode += tokenizer.encode(mm_content)
+                        if '<SREL>' in mm_content:
+                            rel_split = re.split('(<SREL> | <EREL>)', mm_content)
+                            for rindex, r in enumerate(rel_split):
+                                if rindex %4 !=2:
+                                    line_encode += tokenizer.encode(r)
+                                else:
+                                    relations = r.split(',')
+                                    for rel_ind,rel in enumerate(relations):
+                                        line_encode += [tokenizer.convert_tokens_to_ids(token) for token in rel.split(' ') if token != '']
+                                        if rel_ind < len(relations)-1:
+                                            line_encode += tokenizer.encode(',')
                         else:
-                            line_encode += [tokenizer.convert_tokens_to_ids(token) for token in mm_content.split(', ') if token != '']
+                            if inner_idx % 4 != 2:
+                                line_encode += tokenizer.encode(mm_content)
+                            else:
+                                line_encode += [tokenizer.convert_tokens_to_ids(token) for token in mm_content.split(', ') if token != '']
 
                 elif idx % 4 != 2:
                     line_encode += tokenizer.encode(context_content)

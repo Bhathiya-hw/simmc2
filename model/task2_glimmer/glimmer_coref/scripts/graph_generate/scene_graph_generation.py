@@ -108,7 +108,8 @@ if __name__ == "__main__":
                     instance_node_id = "O" + str(instance['index'])
                     scene_graph[scene][instance_node_id] = object_graphs[instance['prefab_path']].copy()
                     scene_graph[scene][instance_node_id]['prefab'] = instance['prefab_path']
-                    scene_graph[scene][instance_node_id]['inventory_id'] = "INV_" +  str(prefabs2ind[instance['prefab_path']])#str(instance['unique_id'])
+                    scene_graph[scene][instance_node_id]['inventory_id'] = str(prefabs2ind[instance['prefab_path']])#str(instance['unique_id'])
+                    print(scene_graph[scene][instance_node_id]['inventory_id'])
                     scene_graph[scene][instance_node_id]['bbox'] = instance['bbox']
                     if 'relation' in scene_graph[scene][instance_node_id].keys():
                       print("Not empty")

@@ -28,7 +28,10 @@ if __name__ == "__main__":
     #                            'brand = unknown', 'customerReview = unknown', 'pattern = unknown', 'materials = unknown', 'DISAMBIGUATE = YES', 'DISAMBIGUATE = NO']
 
     SPECIAL_EDGE_TOKENS = ['price', 'sleeveLength', 'color', 'type', 'materials', 'brand', 'pattern', 'positioned', 'assetType', 'availableSizes', 'customerRating', 'customerReview']
-    SPECIAL_ATTRIBUTE_TOKENS  = ['XS', 'S', 'M', 'L', 'XL', 'XXL']
+
+    SPECIAL_SPATIAL_TOKENS = ['leftof', 'rightof', 'isover', 'isunder']
+    SPECIAL_ATTRIBUTE_TOKENS  = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] + SPECIAL_SPATIAL_TOKENS
+
     # DISAMBIGUATE_NODE_TOKEN = ['DISAMBIGUATE = YES', 'DISAMBIGUATE = NO' ]
     # MENTIONED_OBJECTS_TOKENS = ['MENTIONED = YES', 'MENTIONED = NO']
 
