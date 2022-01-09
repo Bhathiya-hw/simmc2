@@ -106,6 +106,7 @@ def convert_json_to_flattened(
 
     predicts = []
     targets = []
+    valid_coref = []
     additional_special_tokens = []
     if input_path_special_tokens != "":
         with open(input_path_special_tokens, "r") as f_in:
@@ -149,7 +150,8 @@ def convert_json_to_flattened(
             if append_unique_ids:
                 relvant_turn = max([int(i) for i in dialog['scene_ids'].keys() if int(i) <= turn['turn_idx']])
                 scene = dialog['scene_ids'][str(relvant_turn)]
-                scene_list.append(scene + "_scene.json")
+                if turn['system_transcript_annotated']['act'] != 'REQUEST:DISAMBIGUATE':
+                    scene_list.append(scene + "_scene.json")
             # Format main input context
             context = ""
             if prev_asst_uttr:
@@ -275,8 +277,11 @@ def convert_json_to_flattened(
                     context=context,
                     START_BELIEF_STATE=START_BELIEF_STATE,
                 )
-                predicts.append(predict)
-
+                if turn['system_transcript_annotated']['act'] != 'REQUEST:DISAMBIGUATE':
+                    predicts.append(predict)
+                    valid_coref.append(True)
+                else:
+                    valid_coref.append(False)
                 # Format the main output
                 target = TEMPLATE_TARGET.format(
                     context=context,
@@ -286,7 +291,8 @@ def convert_json_to_flattened(
                     response=asst_uttr,
                     END_OF_SENTENCE=END_OF_SENTENCE,
                 )
-                targets.append(target)
+                if turn['system_transcript_annotated']['act'] != 'REQUEST:DISAMBIGUATE':
+                    targets.append(target)
 
                 # NOTE: Retrieval options w/ belief states is not implemented.
             else:
@@ -294,8 +300,11 @@ def convert_json_to_flattened(
                 predict = TEMPLATE_PREDICT_NOBELIEF.format(
                     context=context, START_OF_RESPONSE=START_OF_RESPONSE
                 )
-                predicts.append(predict)
-
+                if turn['system_transcript_annotated']['act'] != 'REQUEST:DISAMBIGUATE':
+                    predicts.append(predict)
+                    valid_coref.append(True)
+                else:
+                    valid_coref.append(False)
                 # Format the main output
                 target = TEMPLATE_TARGET_NOBELIEF.format(
                     context=context,
@@ -303,7 +312,8 @@ def convert_json_to_flattened(
                     END_OF_SENTENCE=END_OF_SENTENCE,
                     START_OF_RESPONSE=START_OF_RESPONSE,
                 )
-                targets.append(target)
+                if turn['system_transcript_annotated']['act'] != 'REQUEST:DISAMBIGUATE':
+                    targets.append(target)
 
                 # Add retrieval options is necessary.
                 if format_retrieval_options:
@@ -318,7 +328,8 @@ def convert_json_to_flattened(
                             START_OF_RESPONSE=START_OF_RESPONSE,
                         )
                         retrieval_targets.append(retrieval_target)
-            err_list.append(err_dict)
+            if turn['system_transcript_annotated']['act'] != 'REQUEST:DISAMBIGUATE':
+                err_list.append(err_dict)
     # Create a directory if it does not exist
     directory = os.path.dirname(output_path_predict)
     if not os.path.exists(directory):
@@ -347,7 +358,11 @@ def convert_json_to_flattened(
         with open(output_path_scene, "w") as f_scene:
             S = "\n".join(scene_list)
             f_scene.write(S)
-
+    output_path_valid =  output_path_target.replace('_target.txt', '_valid.json')
+    with open(output_path_valid, "w") as f_valid:
+        json.dump(valid_coref,f_valid)
+        # V = "\n".join(valid_coref)
+        # f_valid.write(V)
     # Write retrieval candidates if necessary.
     if format_retrieval_options:
         # Create a directory if it does not exist
