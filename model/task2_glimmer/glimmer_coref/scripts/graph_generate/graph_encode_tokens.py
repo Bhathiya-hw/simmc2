@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
 
     with open(output_path_attributes, 'w+') as f:
-        json.dump(SPECIAL_ATTRIBUTE_TOKENS,f)
+        json.dump(list(dict.fromkeys(SPECIAL_ATTRIBUTE_TOKENS)),f)
 
     with open(output_path_predicates, 'w+') as f:
         json.dump(list(predicates),f)

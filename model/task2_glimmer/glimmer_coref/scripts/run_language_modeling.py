@@ -276,16 +276,25 @@ class MiniDictDataset(Dataset):
                         line_encode += tokenizer.encode(slot_groups[1])
                         line_encode += [tokenizer.convert_tokens_to_ids(slot_groups[2].strip())]
 
-                        req_groups = re.split('(\(|\) )', answer_content.strip())[1:4]
+                        req_groups = re.split('(\(|\))', answer_content.strip())[1:]
                         line_encode += [tokenizer.convert_tokens_to_ids(req_groups[0].strip())]
                         line_encode += [tokenizer.convert_tokens_to_ids(token) for token in req_groups[1].split(', ') if token != '']
                         line_encode += [tokenizer.convert_tokens_to_ids(req_groups[2].strip())]
 
-                        o_groups = re.split('(< | >)', answer_content.strip())[1:4]
-                        line_encode += [tokenizer.convert_tokens_to_ids(o_groups[0].strip())]
-                        line_encode += [tokenizer.convert_tokens_to_ids(token) for token in o_groups[1].split(', ') if token != '']
-                        line_encode += [tokenizer.convert_tokens_to_ids(o_groups[2].strip())]
-
+                        # o_groups = re.split('(< | >)', answer_content.strip())[1:4]
+                        # line_encode += [tokenizer.convert_tokens_to_ids(o_groups[0].strip())]
+                        # line_encode += [tokenizer.convert_tokens_to_ids(token) for token in o_groups[1].split(', ') if token != '']
+                        # line_encode += [tokenizer.convert_tokens_to_ids(o_groups[2].strip())]
+                    elif idx %4 == 0:
+                        obj_split = re.split('(<EOB>)', answer_content)
+                        for obj_ind, split in enumerate(obj_split):
+                            if obj_ind == 0:
+                                o_groups = re.split('(< | >)', answer_content.strip())[1:4]
+                                line_encode += [tokenizer.convert_tokens_to_ids(o_groups[0].strip())]
+                                line_encode += [tokenizer.convert_tokens_to_ids(token) for token in o_groups[1].split(', ') if token != '']
+                                line_encode += [tokenizer.convert_tokens_to_ids(o_groups[2].strip())]
+                            else:
+                                line_encode += tokenizer.encode(split)
                     elif idx % 4 != 2:
                         line_encode += tokenizer.encode(answer_content)
                         # print(line_encode)
@@ -949,7 +958,7 @@ def main():
     parser.add_argument(
         "--save_total_limit",
         type=int,
-        default=3,
+        default=8,
         help="Limit the total amount of checkpoints, delete the older checkpoints in the output_dir, does not delete by default",
     )
     parser.add_argument(

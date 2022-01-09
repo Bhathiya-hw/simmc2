@@ -92,7 +92,7 @@ def convert_json_to_flattened(
     if input_path_scene_graph is not None and output_path_scene is not None:
         with open(input_path_scene_graph, 'r') as file_id:
             scene_graph =  json.load(file_id)
-            print(scene_graph.keys())
+            # print(scene_graph.keys())
             append_unique_ids = True
 
     with open(input_path_fahsion_meta, 'r') as fas:
@@ -108,23 +108,34 @@ def convert_json_to_flattened(
     targets = []
     valid_coref = []
     additional_special_tokens = []
-    if input_path_special_tokens != "":
+    if input_path_special_tokens != '':
         with open(input_path_special_tokens, "r") as f_in:
             special_tokens = json.load(f_in)
     else:
+        print('else')
         special_tokens = {"eos_token": END_OF_SENTENCE}
-        if use_belief_states:
-            additional_special_tokens.append(END_OF_BELIEF)
-        else:
-            additional_special_tokens.append(START_OF_RESPONSE)
-        if use_multimodal_contexts:
-            additional_special_tokens.extend(
-                [START_OF_MULTIMODAL_CONTEXTS, END_OF_MULTIMODAL_CONTEXTS]
-            )
-    additional_special_tokens.extend(Constants.OBJECTS_INV)
-    additional_special_tokens.extend(Constants.ATTRIBUTES_INV)
-    additional_special_tokens.extend(list(ind2prefab.keys()))
-    special_tokens["additional_special_tokens"] = additional_special_tokens
+        additional_special_tokens.append(END_OF_BELIEF)
+        additional_special_tokens.append(START_OF_RESPONSE)
+        additional_special_tokens.extend([START_OF_MULTIMODAL_CONTEXTS, END_OF_MULTIMODAL_CONTEXTS,
+                                          START_OF_MULTIMODAL_CONTEXTS, END_OF_MULTIMODAL_CONTEXTS, START_OF_CATALOG_CONTEXTS,END_OF_CATALOG_CONTEXTS,
+                                          START_OF_SPATIAL_CONTEXTS, END_OF_SPATIAL_CONTEXTS,
+                                          START_OF_PRED_CATALOG,
+                                          END_OF_PRED_CATALOG,
+                                          START_BELIEF_STATE,START_OF_RESPONSE, END_OF_BELIEF ])
+
+        # if use_belief_states:
+        #     additional_special_tokens.append(END_OF_BELIEF)
+        # else:
+        #     additional_special_tokens.append(START_OF_RESPONSE)
+        # if use_multimodal_contexts:
+        #     additional_special_tokens.extend(
+        #         [START_OF_MULTIMODAL_CONTEXTS, END_OF_MULTIMODAL_CONTEXTS]
+        #     )
+        additional_special_tokens.extend(Constants.OBJECTS_INV)
+        additional_special_tokens.extend(Constants.ATTRIBUTES_INV)
+        additional_special_tokens.extend(list(ind2prefab.keys()))
+        print(additional_special_tokens)
+        special_tokens["additional_special_tokens"] = additional_special_tokens
 
     if output_path_special_tokens != "":
         # If a new output path for special tokens is given,
@@ -201,7 +212,7 @@ def convert_json_to_flattened(
                         if i < len(objval):
                             err_dict[objkey] = objval[i]
                             if objval[i] in scene_graph[scene + '_scene.json'].keys():
-                                print(objval[i])
+                                # print(objval[i])
                                 err_dict['visual_' + str(i) ] =scene_graph[scene + '_scene.json'][str(objval[i])]['visual']
                                 err_dict['non-visual_' + str(i)] = scene_graph[scene + '_scene.json'][str(objval[i])]['non-visual']
                                 err_dict['relation_'+ str(i)] = scene_graph[scene + '_scene.json'][str(objval[i])]['relation']
@@ -216,7 +227,7 @@ def convert_json_to_flattened(
                             err_dict['non-visual_' + str(i)] = None
                             err_dict['relation_' + str(i)] = None
                     str_belief_state_per_frame = (
-                        "{act} [ {slot_values} ] ({request_slots}) < {objects} > {uniques} ".format(
+                        "{act} [ {slot_values} ] ({request_slots}) {uniques} < {objects} > ".format(
                             act=user_belief["act"].strip(),
                             slot_values=", ".join(
                                 [
@@ -381,6 +392,7 @@ def convert_json_to_flattened(
         with open(output_path_special_tokens, "w") as f_special_tokens:
             # Add oov's (acts and slot names, etc.) to special tokens as well
             special_tokens["additional_special_tokens"].extend(list(oov))
+            # print( special_tokens["additional_special_tokens"])
             json.dump(special_tokens, f_special_tokens)
 
 
@@ -416,7 +428,7 @@ def represent_visual_objects(object_ids, scene=None, prefab2ind=None, ind2Prefab
             for rr in related_relations:
                 triplet_dict[subj] = (subj, rr[0], rr[1])
                 triplet_list.append((subj, rr[0], rr[1]))
-        print(triplet_dict)
+        # print(triplet_dict)
         triplet_strings = ', '.join([f'{r[0]} {r[1].replace(" " , "")} {r[2]}' for r in triplet_list])
 
         return f"{START_OF_CATALOG_CONTEXTS} {unique_ids} {END_OF_CATALOG_CONTEXTS}  {START_OF_MULTIMODAL_CONTEXTS} {str_objects} {END_OF_MULTIMODAL_CONTEXTS} {START_OF_SPATIAL_CONTEXTS} {triplet_strings} {END_OF_SPATIAL_CONTEXTS} "
